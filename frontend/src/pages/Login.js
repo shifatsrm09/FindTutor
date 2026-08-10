@@ -21,9 +21,11 @@ function Login({ onLogin, goToSignup }) {
                 "http://localhost:5000/api/auth/login",
                 {
                     method: "POST",
+
                     headers: {
                         "Content-Type": "application/json"
                     },
+
                     body: JSON.stringify({
                         email,
                         password
@@ -34,12 +36,18 @@ function Login({ onLogin, goToSignup }) {
             const data = await response.json();
 
             if (!response.ok) {
+
                 throw new Error(
-                    data.message || "Login failed."
+                    data.message ||
+                    "Login failed."
                 );
             }
 
-            onLogin(data.user);
+            // Send user AND token to App.js
+            onLogin(
+                data.user,
+                data.token
+            );
 
         } catch (error) {
 
@@ -139,6 +147,7 @@ const styles = {
     error: {
         color: "#f87171"
     }
+
 };
 
 export default Login;

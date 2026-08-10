@@ -2,14 +2,20 @@ const express = require("express");
 const mysql = require("mysql2/promise");
 const cors = require("cors");
 const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
 const fs = require("fs");
 const path = require("path");
+
 require("dotenv").config();
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
+
+// ==================================================
+// MYSQL CONNECTION
+// ==================================================
 
 const db = mysql.createPool({
     host: process.env.DB_HOST,
@@ -22,9 +28,9 @@ const db = mysql.createPool({
     queueLimit: 0
 });
 
-// --------------------------------------------------
+// ==================================================
 // SQL FILE LOADER
-// --------------------------------------------------
+// ==================================================
 
 function loadSQL(fileName) {
     const filePath = path.join(
@@ -41,10 +47,22 @@ const signupSQL = loadSQL("signup.sql");
 const signupStudentSQL = loadSQL("signup_student.sql");
 const signupTutorSQL = loadSQL("signup_tutor.sql");
 const loginSQL = loadSQL("login.sql");
+const meSQL = loadSQL("me.sql");
 
-// --------------------------------------------------
-// DATABASE TEST
-// --------------------------------------------------
+// ==================================================
+// JWT CONFIGURATION
+// ==================================================
+
+const JWT_SECRET = process.env.JWT_SECRET;
+
+if (!JWT_SECRET) {
+    console.error("JWT_SECRET is missing from .env");
+    process.exit(1);
+}
+
+// ==================================================
+// TEST DATABASE CONNECTION
+// ==================================================
 
 app.get("/api/test-db", async (req, res) => {
     try {
@@ -59,7 +77,7 @@ app.get("/api/test-db", async (req, res) => {
         });
 
     } catch (error) {
-        console.error(error);
+        console.error("Database error:", error);
 
         res.status(500).json({
             success: false,
@@ -69,9 +87,9 @@ app.get("/api/test-db", async (req, res) => {
     }
 });
 
-// --------------------------------------------------
+// ==================================================
 // SIGNUP
-// --------------------------------------------------
+// ==================================================
 
 app.post("/api/auth/signup", async (req, res) => {
 
@@ -87,10 +105,15 @@ app.post("/api/auth/signup", async (req, res) => {
         teachingMode
     } = req.body;
 
+    // -------------------------------
+    // Validate input
+    // -------------------------------
+
     if (!fullName || !email || !password || !role) {
         return res.status(400).json({
             success: false,
-            message: "Full name, email, password and role are required."
+            message:
+                "Full name, email, password and role are required."
         });
     }
 
@@ -107,7 +130,10 @@ app.post("/api/auth/signup", async (req, res) => {
 
         await connection.beginTransaction();
 
+        // -------------------------------
         // Check existing email
+        // -------------------------------
+
         const [existingUsers] = await connection.execute(
             "SELECT userID FROM USER WHERE email = ?",
             [email]
@@ -123,13 +149,19 @@ app.post("/api/auth/signup", async (req, res) => {
             });
         }
 
+        // -------------------------------
         // Hash password
+        // -------------------------------
+
         const hashedPassword = await bcrypt.hash(
             password,
             10
         );
 
+        // -------------------------------
         // Insert USER
+        // -------------------------------
+
         const [userResult] = await connection.execute(
             signupSQL,
             [
@@ -142,7 +174,10 @@ app.post("/api/auth/signup", async (req, res) => {
 
         const userID = userResult.insertId;
 
-        // Insert subclass
+        // -------------------------------
+        // Insert STUDENT / TUTOR
+        // -------------------------------
+
         if (role === "student") {
 
             await connection.execute(
@@ -165,6 +200,10 @@ app.post("/api/auth/signup", async (req, res) => {
                 ]
             );
         }
+
+        // -------------------------------
+        // Save transaction
+        // -------------------------------
 
         await connection.commit();
 
@@ -197,9 +236,9 @@ app.post("/api/auth/signup", async (req, res) => {
     }
 });
 
-// --------------------------------------------------
+// ==================================================
 // LOGIN
-// --------------------------------------------------
+// ==================================================
 
 app.post("/api/auth/login", async (req, res) => {
 
@@ -207,6 +246,10 @@ app.post("/api/auth/login", async (req, res) => {
         email,
         password
     } = req.body;
+
+    // -------------------------------
+    // Validate input
+    // -------------------------------
 
     if (!email || !password) {
         return res.status(400).json({
@@ -216,6 +259,10 @@ app.post("/api/auth/login", async (req, res) => {
     }
 
     try {
+
+        // -------------------------------
+        // Find user
+        // -------------------------------
 
         const [users] = await db.execute(
             loginSQL,
@@ -232,6 +279,10 @@ app.post("/api/auth/login", async (req, res) => {
 
         const user = users[0];
 
+        // -------------------------------
+        // Check password
+        // -------------------------------
+
         const passwordMatch = await bcrypt.compare(
             password,
             user.password
@@ -245,6 +296,10 @@ app.post("/api/auth/login", async (req, res) => {
             });
         }
 
+        // -------------------------------
+        // Check role
+        // -------------------------------
+
         if (!user.role) {
 
             return res.status(400).json({
@@ -253,9 +308,31 @@ app.post("/api/auth/login", async (req, res) => {
             });
         }
 
+        // -------------------------------
+        // Create JWT
+        // -------------------------------
+
+        const token = jwt.sign(
+            {
+                userID: user.userID,
+                role: user.role
+            },
+            JWT_SECRET,
+            {
+                expiresIn: "7d"
+            }
+        );
+
+        // -------------------------------
+        // Send response
+        // -------------------------------
+
         res.json({
             success: true,
             message: "Login successful.",
+
+            token,
+
             user: {
                 userID: user.userID,
                 fullName: user.fullName,
@@ -270,15 +347,128 @@ app.post("/api/auth/login", async (req, res) => {
 
         res.status(500).json({
             success: false,
-            message: "Login failed.",
-            error: error.message
+            message: "Login failed."
         });
     }
 });
 
-// --------------------------------------------------
-// SERVER
-// --------------------------------------------------
+// ==================================================
+// AUTHENTICATION MIDDLEWARE
+// ==================================================
+
+function authenticateToken(req, res, next) {
+
+    const authHeader = req.headers.authorization;
+
+    // No Authorization header
+    if (!authHeader) {
+
+        return res.status(401).json({
+            success: false,
+            message: "Authentication token is required."
+        });
+    }
+
+    const parts = authHeader.split(" ");
+
+    // Expected:
+    // Authorization: Bearer TOKEN
+
+    if (
+        parts.length !== 2 ||
+        parts[0] !== "Bearer"
+    ) {
+
+        return res.status(401).json({
+            success: false,
+            message: "Invalid authentication format."
+        });
+    }
+
+    const token = parts[1];
+
+    try {
+
+        const decoded = jwt.verify(
+            token,
+            JWT_SECRET
+        );
+
+        req.user = decoded;
+
+        next();
+
+    } catch (error) {
+
+        return res.status(401).json({
+            success: false,
+            message: "Invalid or expired token."
+        });
+    }
+}
+
+// ==================================================
+// GET CURRENT USER
+// ==================================================
+
+app.get(
+    "/api/auth/me",
+    authenticateToken,
+    async (req, res) => {
+
+        try {
+
+            const [users] = await db.execute(
+                meSQL,
+                [req.user.userID]
+            );
+
+            if (users.length === 0) {
+
+                return res.status(404).json({
+                    success: false,
+                    message: "User no longer exists."
+                });
+            }
+
+            const user = users[0];
+
+            if (!user.role) {
+
+                return res.status(400).json({
+                    success: false,
+                    message: "User role could not be determined."
+                });
+            }
+
+            res.json({
+                success: true,
+                user: {
+                    userID: user.userID,
+                    fullName: user.fullName,
+                    email: user.email,
+                    role: user.role
+                }
+            });
+
+        } catch (error) {
+
+            console.error(
+                "Authentication check error:",
+                error
+            );
+
+            res.status(500).json({
+                success: false,
+                message: "Failed to verify user."
+            });
+        }
+    }
+);
+
+// ==================================================
+// START SERVER
+// ==================================================
 
 const PORT = process.env.PORT || 5000;
 

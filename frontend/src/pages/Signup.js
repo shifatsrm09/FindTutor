@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 
-function Signup({ onLogin }) {
+function Signup({ goToLogin }) {
 
     const [form, setForm] = useState({
         fullName: "",
@@ -25,8 +25,8 @@ function Signup({ onLogin }) {
             value
         } = e.target;
 
-        setForm(prev => ({
-            ...prev,
+        setForm((previous) => ({
+            ...previous,
             [name]: value
         }));
     };
@@ -45,9 +45,11 @@ function Signup({ onLogin }) {
                 "http://localhost:5000/api/auth/signup",
                 {
                     method: "POST",
+
                     headers: {
                         "Content-Type": "application/json"
                     },
+
                     body: JSON.stringify(form)
                 }
             );
@@ -55,13 +57,14 @@ function Signup({ onLogin }) {
             const data = await response.json();
 
             if (!response.ok) {
+
                 throw new Error(
                     data.message || "Signup failed."
                 );
             }
 
             setMessage(
-                "Account created! You can now login."
+                "Account created successfully!"
             );
 
             setForm({
@@ -99,6 +102,7 @@ function Signup({ onLogin }) {
                 <h2>Create Account</h2>
 
                 <input
+                    type="text"
                     name="fullName"
                     placeholder="Full Name"
                     value={form.fullName}
@@ -107,8 +111,8 @@ function Signup({ onLogin }) {
                 />
 
                 <input
-                    name="email"
                     type="email"
+                    name="email"
                     placeholder="Email"
                     value={form.email}
                     onChange={handleChange}
@@ -116,8 +120,8 @@ function Signup({ onLogin }) {
                 />
 
                 <input
-                    name="password"
                     type="password"
+                    name="password"
                     placeholder="Password"
                     value={form.password}
                     onChange={handleChange}
@@ -125,6 +129,7 @@ function Signup({ onLogin }) {
                 />
 
                 <input
+                    type="text"
                     name="phone"
                     placeholder="Phone"
                     value={form.phone}
@@ -147,6 +152,7 @@ function Signup({ onLogin }) {
 
                 {form.role === "student" && (
                     <input
+                        type="text"
                         name="institution"
                         placeholder="Institution"
                         value={form.institution}
@@ -164,12 +170,12 @@ function Signup({ onLogin }) {
                         />
 
                         <input
-                            name="exp_year"
                             type="number"
-                            min="0"
+                            name="exp_year"
                             placeholder="Years of Experience"
                             value={form.exp_year}
                             onChange={handleChange}
+                            min="0"
                         />
 
                         <select
@@ -178,7 +184,7 @@ function Signup({ onLogin }) {
                             onChange={handleChange}
                         >
                             <option value="">
-                                Teaching Mode
+                                Select Teaching Mode
                             </option>
 
                             <option value="ONLINE">
@@ -201,30 +207,29 @@ function Signup({ onLogin }) {
                     disabled={loading}
                 >
                     {loading
-                        ? "Creating..."
+                        ? "Creating Account..."
                         : "Sign Up"}
                 </button>
 
-               {message && (
-    <>
-                <p style={styles.success}>
-                    {message}
-                </p>
-
-                <button
-                    type="button"
-                    onClick={() => onLogin()}
-                >
-                    Go to Login
-                </button>
-            </>
-                      )}
+                {message && (
+                    <p style={styles.success}>
+                        {message}
+                    </p>
+                )}
 
                 {error && (
                     <p style={styles.error}>
                         {error}
                     </p>
                 )}
+
+                {/* ALWAYS VISIBLE LOGIN BUTTON */}
+                <button
+                    type="button"
+                    onClick={goToLogin}
+                >
+                    Login
+                </button>
 
             </form>
 
@@ -260,6 +265,7 @@ const styles = {
     error: {
         color: "#f87171"
     }
+
 };
 
 export default Signup;

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
@@ -6,22 +6,120 @@ import Dashboard from "./pages/Dashboard";
 
 function App() {
 
-    const [page, setPage] = useState("login");
+    const [page, setPage] = useState("loading");
     const [user, setUser] = useState(null);
 
-    const handleLogin = (userData) => {
+    // ==================================================
+    // CHECK EXISTING LOGIN
+    // ==================================================
+
+    useEffect(() => {
+
+        const token = localStorage.getItem(
+            "findTutorToken"
+        );
+
+        // No token means user is not logged in
+        if (!token) {
+            setPage("login");
+            return;
+        }
+
+        // Ask backend to verify the token
+        fetch(
+            "http://localhost:5000/api/auth/me",
+            {
+                method: "GET",
+
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            }
+        )
+            .then(async (response) => {
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(
+                        data.message ||
+                        "Authentication failed."
+                    );
+                }
+
+                return data;
+            })
+            .then((data) => {
+
+                // Token is valid
+                setUser(data.user);
+                setPage("dashboard");
+
+            })
+            .catch(() => {
+
+                // Token is invalid/expired
+                localStorage.removeItem(
+                    "findTutorToken"
+                );
+
+                setUser(null);
+                setPage("login");
+            });
+
+    }, []);
+
+    // ==================================================
+    // LOGIN
+    // ==================================================
+
+    const handleLogin = (userData, token) => {
+
+        // Save token so login survives refresh
+        localStorage.setItem(
+            "findTutorToken",
+            token
+        );
 
         setUser(userData);
         setPage("dashboard");
     };
 
+    // ==================================================
+    // LOGOUT
+    // ==================================================
+
     const handleLogout = () => {
+
+        localStorage.removeItem(
+            "findTutorToken"
+        );
 
         setUser(null);
         setPage("login");
     };
 
-    if (user && page === "dashboard") {
+    // ==================================================
+    // LOADING
+    // ==================================================
+
+    if (page === "loading") {
+
+        return (
+            <div style={styles.loading}>
+                Checking login...
+            </div>
+        );
+    }
+
+    // ==================================================
+    // DASHBOARD
+    // ==================================================
+
+    if (
+        user &&
+        page === "dashboard"
+    ) {
 
         return (
             <Dashboard
@@ -31,21 +129,47 @@ function App() {
         );
     }
 
+    // ==================================================
+    // SIGNUP
+    // ==================================================
+
     if (page === "signup") {
 
         return (
             <Signup
-                onLogin={handleLogin}
+                goToLogin={() =>
+                    setPage("login")
+                }
             />
         );
     }
 
+    // ==================================================
+    // LOGIN
+    // ==================================================
+
     return (
         <Login
             onLogin={handleLogin}
-            goToSignup={() => setPage("signup")}
+            goToSignup={() =>
+                setPage("signup")
+            }
         />
     );
 }
+
+const styles = {
+
+    loading: {
+        minHeight: "100vh",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        background: "#111",
+        color: "white",
+        fontSize: "20px"
+    }
+
+};
 
 export default App;
