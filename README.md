@@ -1,5 +1,7 @@
 # Setup
 
+https://docs.google.com/document/d/10aFfREsRlp8VwcrMENp4fD0EInwfX5mGjWgwdyFvVWU/edit?usp=drivesdk
+
 ## 1. Clone Project
 
 ```bash
