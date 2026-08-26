@@ -3,6 +3,7 @@ SELECT u.userID AS tutorID, u.fullName, u.email, u.location, t.bio, t.exp_year, 
        GROUP_CONCAT(DISTINCT CONCAT(a.dayOfWeek, ' ', TIME_FORMAT(a.startTime, '%H:%i'), '-', TIME_FORMAT(a.endTime, '%H:%i')) ORDER BY FIELD(a.dayOfWeek, 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday') SEPARATOR ' | ') AS availability,
        MIN(te.hourlyRate) AS minimumRate,
        ROUND(COALESCE(AVG(r.rating), 0), 2) AS averageRating,
+       COUNT(DISTINCT r.reviewID) AS reviewCount,
        COUNT(DISTINCT CASE WHEN b.status = 'COMPLETED' THEN b.bookingID END) AS completedSessions
 FROM TUTOR t
 JOIN USER u ON u.userID = t.userID
@@ -19,4 +20,3 @@ WHERE u.isBanned = FALSE
   AND (? IS NULL OR te.hourlyRate <= ?)
 GROUP BY u.userID, u.fullName, u.email, u.location, t.bio, t.exp_year, t.teachingMode
 HAVING (? IS NULL OR COALESCE(AVG(r.rating), 0) >= ?)
-ORDER BY averageRating DESC, completedSessions DESC, minimumRate ASC;

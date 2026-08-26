@@ -13,7 +13,12 @@ CREATE TABLE USER (
     phone VARCHAR(20),
     location VARCHAR(100),
     isBanned BOOLEAN NOT NULL DEFAULT FALSE,
-    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    -- Location must be one of the controlled/allowed areas served by the platform.
+    CONSTRAINT chk_user_location
+        CHECK (location IS NULL OR location IN
+            ('Badda', 'Gulshan', 'Uttara', 'Banani', 'Mirpur', 'Norda', 'Rampura', 'Tongi', 'Merul'))
 );
 
 CREATE TABLE STUDENT (

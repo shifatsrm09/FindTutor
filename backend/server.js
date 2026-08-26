@@ -10,6 +10,17 @@ require("dotenv").config();
 const app = express();
 const LOCATIONS = ["Badda", "Gulshan", "Uttara", "Banani", "Mirpur", "Norda", "Rampura", "Tongi", "Merul"];
 
+// Whitelisted ORDER BY clauses for the tutor directory/search.
+// Built server-side only from this fixed map, never from raw request input,
+// so it is safe to interpolate into the SQL string.
+const TUTOR_SORT_OPTIONS = {
+    rating: "averageRating DESC, reviewCount DESC, minimumRate ASC",
+    rate: "minimumRate ASC, averageRating DESC",
+    experience: "t.exp_year DESC, averageRating DESC",
+    name: "u.fullName ASC",
+    reviews: "reviewCount DESC, averageRating DESC"
+};
+
 app.use(cors());
 app.use(express.json());
 
@@ -156,6 +167,13 @@ app.post("/api/auth/signup", async (req, res) => {
         });
     }
 
+    if (location && !LOCATIONS.includes(location)) {
+        return res.status(400).json({
+            success: false,
+            message: "Please select a valid location."
+        });
+    }
+
     const connection = await db.getConnection();
 
     try {
@@ -279,13 +297,6 @@ app.post("/api/auth/login", async (req, res) => {
         return res.status(400).json({
             success: false,
             message: "Email and password are required."
-        });
-    }
-
-    if (location && !LOCATIONS.includes(location)) {
-        return res.status(400).json({
-            success: false,
-            message: "Please select a valid project location."
         });
     }
 
@@ -716,13 +727,17 @@ app.get("/api/tutors/search", async (req, res) => {
     const minRate = normalizeOptionalNumber(req.query.minRate);
     const maxRate = normalizeOptionalNumber(req.query.maxRate);
     const minRating = normalizeOptionalNumber(req.query.minRating);
+    const sortBy = TUTOR_SORT_OPTIONS[req.query.sortBy] ? req.query.sortBy : "rating";
 
     try {
-        const [tutors] = await db.execute(searchTutorsSQL, [
-            subjectID, subjectID, location, location, teachingMode, teachingMode,
-            minRate, minRate, maxRate, maxRate, minRating, minRating
-        ]);
-        res.json({ success: true, tutors });
+        const [tutors] = await db.execute(
+            `${searchTutorsSQL} ORDER BY ${TUTOR_SORT_OPTIONS[sortBy]};`,
+            [
+                subjectID, subjectID, location, location, teachingMode, teachingMode,
+                minRate, minRate, maxRate, maxRate, minRating, minRating
+            ]
+        );
+        res.json({ success: true, tutors, sortBy });
     } catch (error) {
         console.error("Tutor search error:", error);
         res.status(500).json({ success: false, message: "Could not search tutors." });
