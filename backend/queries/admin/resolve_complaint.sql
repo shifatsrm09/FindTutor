@@ -1,0 +1,3 @@
+UPDATE COMPLAINT
+SET status = 'RESOLVED'
+WHERE complaintID = ?;

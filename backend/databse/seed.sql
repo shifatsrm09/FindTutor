@@ -1,378 +1,151 @@
 -- ============================================================
--- FIND TUTOR
--- SEED DATA
+-- FIND TUTOR: COMPLETE DEMO SEED DATA
+-- Run admin_mvp_migration.sql first if this is an existing database.
+-- All seeded student and tutor passwords are plain text: password123
+-- This script clears existing demo data before inserting new records.
 -- ============================================================
 
 USE find_tutor;
 
+SET FOREIGN_KEY_CHECKS = 0;
+DELETE FROM COMPLAINT;
+DELETE FROM REVIEW;
+DELETE FROM BOOKING;
+DELETE FROM TUTOR_REQUEST;
+DELETE FROM AVAILABILITY;
+DELETE FROM TEACHES;
+DELETE FROM TUTOR;
+DELETE FROM STUDENT;
+DELETE FROM SUBJECT;
+DELETE FROM USER;
+SET FOREIGN_KEY_CHECKS = 1;
+
+ALTER TABLE USER AUTO_INCREMENT = 1;
+ALTER TABLE SUBJECT AUTO_INCREMENT = 1;
+ALTER TABLE AVAILABILITY AUTO_INCREMENT = 1;
+ALTER TABLE TUTOR_REQUEST AUTO_INCREMENT = 1;
+ALTER TABLE BOOKING AUTO_INCREMENT = 1;
+ALTER TABLE REVIEW AUTO_INCREMENT = 1;
+ALTER TABLE COMPLAINT AUTO_INCREMENT = 1;
 
 -- ============================================================
--- USER
--- Password for all seeded accounts:
--- password123
---
--- The password values below are bcrypt hashes.
+-- USERS: 5 STUDENTS + 5 TUTORS
 -- ============================================================
 
-INSERT INTO `USER`
-    (userID, fullName, email, password, phone)
-VALUES
-    (
-        1,
-        'Dewan Sifat Rahman',
-        'sifat@student.com',
-        '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',
-        '01700000001'
-    ),
-    (
-        2,
-        'Anha Sadman',
-        'anha@student.com',
-        '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',
-        '01700000002'
-    ),
-    (
-        3,
-        'Sadman Sadat Shopnil',
-        'shopnil@student.com',
-        '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',
-        '01700000003'
-    ),
-    (
-        4,
-        'Rahim Ahmed',
-        'rahim@tutor.com',
-        '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',
-        '01700000004'
-    ),
-    (
-        5,
-        'Nusrat Jahan',
-        'nusrat@tutor.com',
-        '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',
-        '01700000005'
-    ),
-    (
-        6,
-        'Tanvir Hasan',
-        'tanvir@tutor.com',
-        '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',
-        '01700000006'
-    ),
-    (
-        7,
-        'Farhan Karim',
-        'farhan@tutor.com',
-        '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',
-        '01700000007'
-    );
+INSERT INTO USER (userID, fullName, email, password, phone, isBanned) VALUES
+(1, 'Ayesha Rahman', 'ayesha@student.com', 'password123', '01710000001', FALSE),
+(2, 'Nabil Hasan', 'nabil@student.com', 'password123', '01710000002', FALSE),
+(3, 'Mim Akter', 'mim@student.com', 'password123', '01710000003', FALSE),
+(4, 'Rafi Ahmed', 'rafi@student.com', 'password123', '01710000004', FALSE),
+(5, 'Sadia Islam', 'sadia@student.com', 'password123', '01710000005', FALSE),
+(6, 'Tanvir Hossain', 'tanvir@tutor.com', 'password123', '01720000001', FALSE),
+(7, 'Nusrat Jahan', 'nusrat@tutor.com', 'password123', '01720000002', FALSE),
+(8, 'Farhan Karim', 'farhan@tutor.com', 'password123', '01720000003', FALSE),
+(9, 'Mahi Chowdhury', 'mahi@tutor.com', 'password123', '01720000004', FALSE),
+(10, 'Samiul Kabir', 'samiul@tutor.com', 'password123', '01720000005', FALSE);
 
+INSERT INTO STUDENT (userID, institution) VALUES
+(1, 'BRAC University'),
+(2, 'North South University'),
+(3, 'Independent University Bangladesh'),
+(4, 'BRAC University'),
+(5, 'East West University');
+
+INSERT INTO TUTOR (userID, bio, exp_year, teachingMode) VALUES
+(6, 'Computer science tutor focused on programming and algorithms.', 4, 'BOTH'),
+(7, 'Mathematics and physics tutor for university-level courses.', 6, 'ONLINE'),
+(8, 'Database and web development tutor with project experience.', 5, 'BOTH'),
+(9, 'Digital logic and electronics tutor with practical examples.', 3, 'OFFLINE'),
+(10, 'Statistics and Python tutor for beginners and intermediate learners.', 4, 'ONLINE');
 
 -- ============================================================
--- STUDENT
+-- SUBJECTS AND TUTOR SUBJECTS
 -- ============================================================
 
-INSERT INTO STUDENT
-    (userID, institution)
-VALUES
-    (1, 'BRAC University'),
-    (2, 'BRAC University'),
-    (3, 'BRAC University');
+INSERT INTO SUBJECT (subjectID, subjectName, category) VALUES
+(1, 'Programming', 'Computer Science'),
+(2, 'Database Systems', 'Computer Science'),
+(3, 'Data Structures', 'Computer Science'),
+(4, 'Algorithms', 'Computer Science'),
+(5, 'Mathematics', 'Mathematics'),
+(6, 'Physics', 'Science'),
+(7, 'Digital Logic Design', 'Computer Engineering'),
+(8, 'Web Development', 'Computer Science'),
+(9, 'Statistics', 'Mathematics'),
+(10, 'Python', 'Computer Science');
 
-
--- ============================================================
--- TUTOR
--- ============================================================
-
-INSERT INTO TUTOR
-    (userID, bio, exp_year, teachingMode)
-VALUES
-    (
-        4,
-        'CSE tutor specializing in programming, algorithms and data structures.',
-        4,
-        'ONLINE'
-    ),
-    (
-        5,
-        'Experienced mathematics tutor for university students.',
-        6,
-        'BOTH'
-    ),
-    (
-        6,
-        'Physics and electronics tutor with practical teaching experience.',
-        5,
-        'OFFLINE'
-    ),
-    (
-        7,
-        'Programming tutor specializing in Java, Python and databases.',
-        3,
-        'BOTH'
-    );
-
+INSERT INTO TEACHES (tutorID, subjectID, hourlyRate) VALUES
+(6, 1, 600.00), (6, 3, 650.00), (6, 4, 700.00),
+(7, 5, 500.00), (7, 6, 550.00), (7, 9, 500.00),
+(8, 2, 650.00), (8, 8, 600.00), (8, 10, 550.00),
+(9, 6, 500.00), (9, 7, 600.00), (9, 5, 450.00),
+(10, 9, 500.00), (10, 10, 550.00), (10, 1, 500.00);
 
 -- ============================================================
--- SUBJECT
+-- TUTOR AVAILABILITY
 -- ============================================================
 
-INSERT INTO SUBJECT
-    (subjectID, subjectName, category)
-VALUES
-    (1, 'Programming', 'Computer Science'),
-    (2, 'Database Systems', 'Computer Science'),
-    (3, 'Data Structures', 'Computer Science'),
-    (4, 'Mathematics', 'Mathematics'),
-    (5, 'Physics', 'Science'),
-    (6, 'Digital Logic', 'Computer Engineering'),
-    (7, 'Algorithms', 'Computer Science'),
-    (8, 'Web Development', 'Computer Science');
-
+INSERT INTO AVAILABILITY (dayOfWeek, startTime, endTime, tutorID) VALUES
+('Monday', '10:00:00', '13:00:00', 6), ('Wednesday', '14:00:00', '18:00:00', 6), ('Friday', '15:00:00', '19:00:00', 6),
+('Tuesday', '09:00:00', '13:00:00', 7), ('Thursday', '14:00:00', '18:00:00', 7), ('Saturday', '10:00:00', '14:00:00', 7),
+('Monday', '15:00:00', '19:00:00', 8), ('Wednesday', '10:00:00', '14:00:00', 8), ('Sunday', '14:00:00', '18:00:00', 8),
+('Tuesday', '14:00:00', '18:00:00', 9), ('Thursday', '10:00:00', '13:00:00', 9), ('Saturday', '15:00:00', '19:00:00', 9),
+('Monday', '09:00:00', '12:00:00', 10), ('Friday', '14:00:00', '18:00:00', 10), ('Sunday', '10:00:00', '14:00:00', 10);
 
 -- ============================================================
--- TEACHES
+-- STUDENT TUTOR REQUESTS
 -- ============================================================
 
-INSERT INTO TEACHES
-    (tutorID, subjectID, hourlyRate)
-VALUES
-    -- Rahim
-    (4, 1, 500.00),
-    (4, 3, 550.00),
-    (4, 7, 600.00),
-
-    -- Nusrat
-    (5, 4, 450.00),
-    (5, 5, 500.00),
-    (5, 1, 550.00),
-
-    -- Tanvir
-    (6, 5, 500.00),
-    (6, 6, 550.00),
-    (6, 4, 450.00),
-
-    -- Farhan
-    (7, 1, 500.00),
-    (7, 2, 600.00),
-    (7, 8, 550.00);
-
+INSERT INTO TUTOR_REQUEST (budget, prefStartTime, prefEndTime, prefDate, teachingMode, studentID, status, subjectID) VALUES
+(700.00, '14:00:00', '17:00:00', '2026-09-02', 'ONLINE', 1, 'OPEN', 4),
+(550.00, '14:00:00', '16:00:00', '2026-09-03', 'ONLINE', 2, 'OPEN', 5),
+(700.00, '15:00:00', '18:00:00', '2026-09-06', 'BOTH', 3, 'MATCHED', 2),
+(600.00, '14:00:00', '17:00:00', '2026-09-01', 'OFFLINE', 4, 'OPEN', 7),
+(600.00, '10:00:00', '13:00:00', '2026-09-07', 'ONLINE', 5, 'OPEN', 10),
+(650.00, '15:00:00', '18:00:00', '2026-09-08', 'BOTH', 1, 'CLOSED', 8);
 
 -- ============================================================
--- AVAILABILITY
+-- BOOKINGS: COMPLETED, CONFIRMED, PENDING AND CANCELLED
 -- ============================================================
 
-INSERT INTO AVAILABILITY
-    (availabilityID, dayOfWeek, startTime, endTime, tutorID)
-VALUES
-    -- Rahim
-    (1, 'Monday',    '10:00:00', '12:00:00', 4),
-    (2, 'Wednesday', '14:00:00', '17:00:00', 4),
-    (3, 'Friday',    '16:00:00', '19:00:00', 4),
-
-    -- Nusrat
-    (4, 'Tuesday',   '09:00:00', '12:00:00', 5),
-    (5, 'Thursday',  '14:00:00', '17:00:00', 5),
-    (6, 'Saturday',  '10:00:00', '13:00:00', 5),
-
-    -- Tanvir
-    (7, 'Monday',    '15:00:00', '18:00:00', 6),
-    (8, 'Wednesday', '10:00:00', '13:00:00', 6),
-    (9, 'Saturday',  '15:00:00', '18:00:00', 6),
-
-    -- Farhan
-    (10, 'Tuesday',  '16:00:00', '19:00:00', 7),
-    (11, 'Thursday', '10:00:00', '13:00:00', 7),
-    (12, 'Sunday',   '14:00:00', '17:00:00', 7);
-
+INSERT INTO BOOKING (startTime, endTime, agreedRate, sessionDate, teachingMode, studentID, tutorID, subjectID, status) VALUES
+('10:00:00', '12:00:00', 650.00, '2026-08-03', 'ONLINE', 1, 6, 3, 'COMPLETED'),
+('10:00:00', '12:00:00', 500.00, '2026-08-04', 'ONLINE', 2, 7, 5, 'COMPLETED'),
+('10:00:00', '12:00:00', 650.00, '2026-08-05', 'BOTH', 3, 8, 2, 'COMPLETED'),
+('10:00:00', '12:00:00', 600.00, '2026-08-06', 'OFFLINE', 4, 9, 7, 'COMPLETED'),
+('14:00:00', '16:00:00', 550.00, '2026-08-07', 'ONLINE', 5, 10, 10, 'COMPLETED'),
+('15:00:00', '17:00:00', 600.00, '2026-08-12', 'ONLINE', 2, 6, 1, 'COMPLETED'),
+('14:00:00', '16:00:00', 600.00, '2026-09-02', 'ONLINE', 1, 6, 4, 'CONFIRMED'),
+('14:00:00', '16:00:00', 500.00, '2026-09-03', 'ONLINE', 2, 7, 5, 'PENDING'),
+('15:00:00', '17:00:00', 650.00, '2026-09-06', 'BOTH', 3, 8, 2, 'CONFIRMED'),
+('14:00:00', '16:00:00', 600.00, '2026-09-01', 'OFFLINE', 4, 9, 7, 'PENDING'),
+('10:00:00', '12:00:00', 550.00, '2026-09-07', 'ONLINE', 5, 10, 10, 'CANCELLED');
 
 -- ============================================================
--- TUTOR REQUEST
+-- REVIEWS FOR COMPLETED BOOKINGS
 -- ============================================================
 
-INSERT INTO TUTOR_REQUEST
-    (
-        requestID,
-        budget,
-        prefStartTime,
-        prefEndTime,
-        prefDate,
-        teachingMode,
-        studentID,
-        status,
-        subjectID
-    )
-VALUES
-    (
-        1,
-        600.00,
-        '14:00:00',
-        '17:00:00',
-        '2026-08-20',
-        'ONLINE',
-        1,
-        'OPEN',
-        3
-    ),
-    (
-        2,
-        500.00,
-        '10:00:00',
-        '13:00:00',
-        '2026-08-21',
-        'ONLINE',
-        2,
-        'OPEN',
-        4
-    ),
-    (
-        3,
-        550.00,
-        '15:00:00',
-        '18:00:00',
-        '2026-08-22',
-        'OFFLINE',
-        3,
-        'MATCHED',
-        6
-    ),
-    (
-        4,
-        650.00,
-        '16:00:00',
-        '19:00:00',
-        '2026-08-23',
-        'ONLINE',
-        1,
-        'OPEN',
-        2
-    );
-
+INSERT INTO REVIEW (bookingID, comment, rating) VALUES
+(1, 'Tanvir explained data structures very clearly.', 5.0),
+(2, 'Nusrat was patient and helpful with calculus.', 4.5),
+(3, 'Farhan made database normalization easy to understand.', 5.0),
+(4, 'Mahi gave useful digital logic practice problems.', 4.0),
+(5, 'Samiul helped me understand Python fundamentals.', 4.5),
+(6, 'Great programming session with practical examples.', 4.5);
 
 -- ============================================================
--- BOOKING
+-- COMPLAINTS FOR ADMIN DASHBOARD TESTING
 -- ============================================================
 
-INSERT INTO BOOKING
-    (
-        bookingID,
-        startTime,
-        endTime,
-        agreedRate,
-        sessionDate,
-        teachingMode,
-        studentID,
-        tutorID,
-        subjectID,
-        status
-    )
-VALUES
-    (
-        1,
-        '14:00:00',
-        '16:00:00',
-        550.00,
-        '2026-08-10',
-        'ONLINE',
-        1,
-        4,
-        3,
-        'COMPLETED'
-    ),
-    (
-        2,
-        '10:00:00',
-        '12:00:00',
-        450.00,
-        '2026-08-11',
-        'ONLINE',
-        2,
-        5,
-        4,
-        'COMPLETED'
-    ),
-    (
-        3,
-        '15:00:00',
-        '17:00:00',
-        550.00,
-        '2026-08-12',
-        'OFFLINE',
-        3,
-        6,
-        6,
-        'COMPLETED'
-    ),
-    (
-        4,
-        '16:00:00',
-        '18:00:00',
-        600.00,
-        '2026-08-18',
-        'ONLINE',
-        1,
-        7,
-        2,
-        'CONFIRMED'
-    ),
-    (
-        5,
-        '10:00:00',
-        '12:00:00',
-        500.00,
-        '2026-08-19',
-        'ONLINE',
-        2,
-        4,
-        1,
-        'CONFIRMED'
-    ),
-    (
-        6,
-        '15:00:00',
-        '17:00:00',
-        500.00,
-        '2026-08-25',
-        'OFFLINE',
-        3,
-        5,
-        5,
-        'PENDING'
-    );
-
+INSERT INTO COMPLAINT (reporterID, reportedUserID, description, status) VALUES
+(1, 9, 'The tutor arrived late for an offline session.', 'OPEN'),
+(4, 7, 'The tutor did not respond to my first booking request.', 'OPEN'),
+(8, 3, 'The student repeatedly changed the agreed session time.', 'OPEN'),
+(5, 6, 'The tutor issue was discussed and resolved.', 'RESOLVED');
 
 -- ============================================================
--- REVIEW
--- ============================================================
-
-INSERT INTO REVIEW
-    (
-        reviewID,
-        bookingID,
-        comment,
-        rating
-    )
-VALUES
-    (
-        1,
-        1,
-        'Very helpful explanation of data structures.',
-        5.0
-    ),
-    (
-        2,
-        2,
-        'Excellent mathematics tutor.',
-        4.5
-    ),
-    (
-        3,
-        3,
-        'Explained digital logic concepts clearly.',
-        5.0
-    );
-
-
--- ============================================================
--- END OF SEED DATA
+-- LOGIN EXAMPLES
+-- Student: ayesha@student.com / password123
+-- Tutor:   tanvir@tutor.com / password123
+-- Admin:   admin / admin
 -- ============================================================

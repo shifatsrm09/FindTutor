@@ -1,0 +1,3 @@
+UPDATE USER
+SET isBanned = FALSE
+WHERE userID = ?;

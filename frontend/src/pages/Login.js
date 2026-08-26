@@ -72,8 +72,8 @@ function Login({ onLogin, goToSignup }) {
                 <h2>Login</h2>
 
                 <input
-                    type="email"
-                    placeholder="Email"
+                    type="text"
+                    placeholder="Email (or admin)"
                     value={email}
                     onChange={(e) =>
                         setEmail(e.target.value)
@@ -99,6 +99,10 @@ function Login({ onLogin, goToSignup }) {
                         ? "Logging in..."
                         : "Login"}
                 </button>
+
+                <p style={styles.adminHint}>
+                    Administrator login: username admin, password admin
+                </p>
 
                 {error && (
                     <p style={styles.error}>
@@ -146,6 +150,13 @@ const styles = {
 
     error: {
         color: "#f87171"
+    },
+
+    adminHint: {
+        margin: "0",
+        color: "#cbd5e1",
+        fontSize: "13px",
+        textAlign: "center"
     }
 
 };

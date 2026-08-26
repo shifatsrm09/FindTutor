@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Dashboard from "./pages/Dashboard";
+import AdminDashboard from "./pages/AdminDashboard";
 
 function App() {
 
@@ -120,6 +121,10 @@ function App() {
         user &&
         page === "dashboard"
     ) {
+
+        if (user.role === "admin") {
+            return <AdminDashboard onLogout={handleLogout} />;
+        }
 
         return (
             <Dashboard

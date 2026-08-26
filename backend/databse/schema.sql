@@ -11,6 +11,7 @@ CREATE TABLE USER (
     email VARCHAR(150) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
     phone VARCHAR(20),
+    isBanned BOOLEAN NOT NULL DEFAULT FALSE,
     createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -147,4 +148,25 @@ CREATE TABLE REVIEW (
 
     CONSTRAINT chk_review_rating
         CHECK (rating >= 1 AND rating <= 5)
+);
+
+CREATE TABLE COMPLAINT (
+    complaintID INT AUTO_INCREMENT PRIMARY KEY,
+    reporterID INT NOT NULL,
+    reportedUserID INT NOT NULL,
+    description TEXT NOT NULL,
+    status VARCHAR(30) NOT NULL DEFAULT 'OPEN',
+    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_complaint_reporter
+        FOREIGN KEY (reporterID)
+        REFERENCES USER(userID)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
+
+    CONSTRAINT fk_complaint_reported_user
+        FOREIGN KEY (reportedUserID)
+        REFERENCES USER(userID)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE
 );

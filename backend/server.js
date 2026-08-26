@@ -1,7 +1,6 @@
 const express = require("express");
 const mysql = require("mysql2/promise");
 const cors = require("cors");
-const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const fs = require("fs");
 const path = require("path");
@@ -32,22 +31,24 @@ const db = mysql.createPool({
 // SQL FILE LOADER
 // ==================================================
 
-function loadSQL(fileName) {
-    const filePath = path.join(
-        __dirname,
-        "queries",
-        "auth",
-        fileName
-    );
+function loadSQL(...folders) {
+    const filePath = path.join(__dirname, "queries", ...folders);
 
     return fs.readFileSync(filePath, "utf8");
 }
 
-const signupSQL = loadSQL("signup.sql");
-const signupStudentSQL = loadSQL("signup_student.sql");
-const signupTutorSQL = loadSQL("signup_tutor.sql");
-const loginSQL = loadSQL("login.sql");
-const meSQL = loadSQL("me.sql");
+const signupSQL = loadSQL("auth", "signup.sql");
+const signupStudentSQL = loadSQL("auth", "signup_student.sql");
+const signupTutorSQL = loadSQL("auth", "signup_tutor.sql");
+const loginSQL = loadSQL("auth", "login.sql");
+const meSQL = loadSQL("auth", "me.sql");
+const adminOverviewSQL = loadSQL("admin", "overview.sql");
+const adminUsersSQL = loadSQL("admin", "users.sql");
+const banUserSQL = loadSQL("admin", "ban_user.sql");
+const unbanUserSQL = loadSQL("admin", "unban_user.sql");
+const adminComplaintsSQL = loadSQL("admin", "complaints.sql");
+const resolveComplaintSQL = loadSQL("admin", "resolve_complaint.sql");
+const createComplaintSQL = loadSQL("complaints", "create.sql");
 
 // ==================================================
 // JWT CONFIGURATION
@@ -150,15 +151,6 @@ app.post("/api/auth/signup", async (req, res) => {
         }
 
         // -------------------------------
-        // Hash password
-        // -------------------------------
-
-        const hashedPassword = await bcrypt.hash(
-            password,
-            10
-        );
-
-        // -------------------------------
         // Insert USER
         // -------------------------------
 
@@ -167,7 +159,7 @@ app.post("/api/auth/signup", async (req, res) => {
             [
                 fullName,
                 email,
-                hashedPassword,
+                password,
                 phone || null
             ]
         );
@@ -260,6 +252,28 @@ app.post("/api/auth/login", async (req, res) => {
 
     try {
 
+        // Special MVP administrator account.
+        if (email === "admin" && password === "admin") {
+
+            const token = jwt.sign(
+                { userID: 0, role: "admin" },
+                JWT_SECRET,
+                { expiresIn: "7d" }
+            );
+
+            return res.json({
+                success: true,
+                message: "Admin login successful.",
+                token,
+                user: {
+                    userID: 0,
+                    fullName: "System Administrator",
+                    email: "admin",
+                    role: "admin"
+                }
+            });
+        }
+
         // -------------------------------
         // Find user
         // -------------------------------
@@ -279,16 +293,15 @@ app.post("/api/auth/login", async (req, res) => {
 
         const user = users[0];
 
-        // -------------------------------
-        // Check password
-        // -------------------------------
+        if (user.isBanned) {
+            return res.status(403).json({
+                success: false,
+                message: "This account has been banned by an administrator."
+            });
+        }
 
-        const passwordMatch = await bcrypt.compare(
-            password,
-            user.password
-        );
-
-        if (!passwordMatch) {
+        // Passwords are temporarily stored as plain text for this MVP.
+        if (password !== user.password) {
 
             return res.status(401).json({
                 success: false,
@@ -407,6 +420,18 @@ function authenticateToken(req, res, next) {
     }
 }
 
+function requireAdmin(req, res, next) {
+
+    if (req.user.role !== "admin") {
+        return res.status(403).json({
+            success: false,
+            message: "Administrator access is required."
+        });
+    }
+
+    next();
+}
+
 // ==================================================
 // GET CURRENT USER
 // ==================================================
@@ -417,6 +442,18 @@ app.get(
     async (req, res) => {
 
         try {
+
+            if (req.user.role === "admin") {
+                return res.json({
+                    success: true,
+                    user: {
+                        userID: 0,
+                        fullName: "System Administrator",
+                        email: "admin",
+                        role: "admin"
+                    }
+                });
+            }
 
             const [users] = await db.execute(
                 meSQL,
@@ -432,6 +469,13 @@ app.get(
             }
 
             const user = users[0];
+
+            if (user.isBanned) {
+                return res.status(403).json({
+                    success: false,
+                    message: "This account has been banned by an administrator."
+                });
+            }
 
             if (!user.role) {
 
@@ -465,6 +509,121 @@ app.get(
         }
     }
 );
+
+// ==================================================
+// COMPLAINTS (STUDENT/TUTOR)
+// ==================================================
+
+app.post("/api/complaints", authenticateToken, async (req, res) => {
+
+    const { reportedUserID, description } = req.body;
+
+    if (req.user.role === "admin") {
+        return res.status(403).json({ success: false, message: "Administrators cannot submit complaints." });
+    }
+
+    if (!reportedUserID || !description || !description.trim()) {
+        return res.status(400).json({ success: false, message: "Reported user ID and complaint description are required." });
+    }
+
+    if (Number(reportedUserID) === req.user.userID) {
+        return res.status(400).json({ success: false, message: "You cannot submit a complaint about yourself." });
+    }
+
+    try {
+        const [result] = await db.execute(createComplaintSQL, [
+            req.user.userID,
+            Number(reportedUserID),
+            description.trim()
+        ]);
+
+        res.status(201).json({
+            success: true,
+            message: "Complaint submitted for administrator review.",
+            complaintID: result.insertId
+        });
+    } catch (error) {
+        console.error("Complaint creation error:", error);
+        res.status(500).json({ success: false, message: "Could not submit complaint. Check the reported user ID." });
+    }
+});
+
+// ==================================================
+// ADMINISTRATION
+// ==================================================
+
+app.get("/api/admin/overview", authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const [rows] = await db.execute(adminOverviewSQL);
+        res.json({ success: true, overview: rows[0] });
+    } catch (error) {
+        console.error("Admin overview error:", error);
+        res.status(500).json({ success: false, message: "Could not load admin overview. Run admin_mvp_migration.sql first." });
+    }
+});
+
+app.get("/api/admin/users", authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const [users] = await db.execute(adminUsersSQL);
+        res.json({ success: true, users });
+    } catch (error) {
+        console.error("Admin users error:", error);
+        res.status(500).json({ success: false, message: "Could not load users. Run admin_mvp_migration.sql first." });
+    }
+});
+
+app.patch("/api/admin/users/:userID/ban", authenticateToken, requireAdmin, async (req, res) => {
+    const userID = Number(req.params.userID);
+    const { isBanned } = req.body;
+
+    if (!Number.isInteger(userID) || typeof isBanned !== "boolean") {
+        return res.status(400).json({ success: false, message: "A valid user ID and ban status are required." });
+    }
+
+    try {
+        const [result] = await db.execute(isBanned ? banUserSQL : unbanUserSQL, [userID]);
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ success: false, message: "User not found." });
+        }
+
+        res.json({ success: true, message: isBanned ? "User banned." : "User unbanned." });
+    } catch (error) {
+        console.error("Ban update error:", error);
+        res.status(500).json({ success: false, message: "Could not update user ban status." });
+    }
+});
+
+app.get("/api/admin/complaints", authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const [complaints] = await db.execute(adminComplaintsSQL);
+        res.json({ success: true, complaints });
+    } catch (error) {
+        console.error("Admin complaints error:", error);
+        res.status(500).json({ success: false, message: "Could not load complaints. Run admin_mvp_migration.sql first." });
+    }
+});
+
+app.patch("/api/admin/complaints/:complaintID/resolve", authenticateToken, requireAdmin, async (req, res) => {
+    const complaintID = Number(req.params.complaintID);
+
+    if (!Number.isInteger(complaintID)) {
+        return res.status(400).json({ success: false, message: "A valid complaint ID is required." });
+    }
+
+    try {
+        const [result] = await db.execute(resolveComplaintSQL, [complaintID]);
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ success: false, message: "Complaint not found." });
+        }
+
+        res.json({ success: true, message: "Complaint resolved." });
+    } catch (error) {
+        console.error("Complaint resolution error:", error);
+        res.status(500).json({ success: false, message: "Could not resolve complaint." });
+    }
+});
 
 // ==================================================
 // START SERVER
