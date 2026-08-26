@@ -11,6 +11,7 @@ SET FOREIGN_KEY_CHECKS = 0;
 DELETE FROM COMPLAINT;
 DELETE FROM REVIEW;
 DELETE FROM BOOKING;
+DELETE FROM STUDENT_REQUEST;
 DELETE FROM TUTOR_REQUEST;
 DELETE FROM AVAILABILITY;
 DELETE FROM TEACHES;
@@ -25,6 +26,7 @@ ALTER TABLE SUBJECT AUTO_INCREMENT = 1;
 ALTER TABLE AVAILABILITY AUTO_INCREMENT = 1;
 ALTER TABLE TUTOR_REQUEST AUTO_INCREMENT = 1;
 ALTER TABLE BOOKING AUTO_INCREMENT = 1;
+ALTER TABLE STUDENT_REQUEST AUTO_INCREMENT = 1;
 ALTER TABLE REVIEW AUTO_INCREMENT = 1;
 ALTER TABLE COMPLAINT AUTO_INCREMENT = 1;
 
@@ -32,17 +34,17 @@ ALTER TABLE COMPLAINT AUTO_INCREMENT = 1;
 -- USERS: 5 STUDENTS + 5 TUTORS
 -- ============================================================
 
-INSERT INTO USER (userID, fullName, email, password, phone, isBanned) VALUES
-(1, 'Ayesha Rahman', 'ayesha@student.com', 'password123', '01710000001', FALSE),
-(2, 'Nabil Hasan', 'nabil@student.com', 'password123', '01710000002', FALSE),
-(3, 'Mim Akter', 'mim@student.com', 'password123', '01710000003', FALSE),
-(4, 'Rafi Ahmed', 'rafi@student.com', 'password123', '01710000004', FALSE),
-(5, 'Sadia Islam', 'sadia@student.com', 'password123', '01710000005', FALSE),
-(6, 'Tanvir Hossain', 'tanvir@tutor.com', 'password123', '01720000001', FALSE),
-(7, 'Nusrat Jahan', 'nusrat@tutor.com', 'password123', '01720000002', FALSE),
-(8, 'Farhan Karim', 'farhan@tutor.com', 'password123', '01720000003', FALSE),
-(9, 'Mahi Chowdhury', 'mahi@tutor.com', 'password123', '01720000004', FALSE),
-(10, 'Samiul Kabir', 'samiul@tutor.com', 'password123', '01720000005', FALSE);
+INSERT INTO USER (userID, fullName, email, password, phone, location, isBanned) VALUES
+(1, 'Ayesha Rahman', 'ayesha@student.com', 'password123', '01710000001', 'Dhaka', FALSE),
+(2, 'Nabil Hasan', 'nabil@student.com', 'password123', '01710000002', 'Dhaka', FALSE),
+(3, 'Mim Akter', 'mim@student.com', 'password123', '01710000003', 'Chattogram', FALSE),
+(4, 'Rafi Ahmed', 'rafi@student.com', 'password123', '01710000004', 'Dhaka', FALSE),
+(5, 'Sadia Islam', 'sadia@student.com', 'password123', '01710000005', 'Rajshahi', FALSE),
+(6, 'Tanvir Hossain', 'tanvir@tutor.com', 'password123', '01720000001', 'Dhaka', FALSE),
+(7, 'Nusrat Jahan', 'nusrat@tutor.com', 'password123', '01720000002', 'Chattogram', FALSE),
+(8, 'Farhan Karim', 'farhan@tutor.com', 'password123', '01720000003', 'Dhaka', FALSE),
+(9, 'Mahi Chowdhury', 'mahi@tutor.com', 'password123', '01720000004', 'Rajshahi', FALSE),
+(10, 'Samiul Kabir', 'samiul@tutor.com', 'password123', '01720000005', 'Dhaka', FALSE);
 
 INSERT INTO STUDENT (userID, institution) VALUES
 (1, 'BRAC University'),
@@ -103,6 +105,14 @@ INSERT INTO TUTOR_REQUEST (budget, prefStartTime, prefEndTime, prefDate, teachin
 (600.00, '14:00:00', '17:00:00', '2026-09-01', 'OFFLINE', 4, 'OPEN', 7),
 (600.00, '10:00:00', '13:00:00', '2026-09-07', 'ONLINE', 5, 'OPEN', 10),
 (650.00, '15:00:00', '18:00:00', '2026-09-08', 'BOTH', 1, 'CLOSED', 8);
+
+-- Tutor posts seeking students for a subject.
+INSERT INTO STUDENT_REQUEST (tutorID, budget, prefStartTime, prefEndTime, prefDate, teachingMode, status, subjectID) VALUES
+(6, 600.00, '14:00:00', '17:00:00', '2026-09-09', 'ONLINE', 'OPEN', 1),
+(7, 500.00, '10:00:00', '13:00:00', '2026-09-10', 'ONLINE', 'OPEN', 5),
+(8, 650.00, '15:00:00', '18:00:00', '2026-09-11', 'BOTH', 'OPEN', 2),
+(9, 600.00, '14:00:00', '17:00:00', '2026-09-12', 'OFFLINE', 'MATCHED', 7),
+(10, 550.00, '10:00:00', '13:00:00', '2026-09-13', 'ONLINE', 'OPEN', 10);
 
 -- ============================================================
 -- BOOKINGS: COMPLETED, CONFIRMED, PENDING AND CANCELLED

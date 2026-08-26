@@ -2,8 +2,8 @@ import React, { useEffect, useState } from "react";
 
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
-import Dashboard from "./pages/Dashboard";
 import AdminDashboard from "./pages/AdminDashboard";
+import MvpDashboard from "./pages/MvpDashboard";
 
 function App() {
 
@@ -126,12 +126,7 @@ function App() {
             return <AdminDashboard onLogout={handleLogout} />;
         }
 
-        return (
-            <Dashboard
-                user={user}
-                onLogout={handleLogout}
-            />
-        );
+        return <MvpDashboard user={user} onLogout={handleLogout} />;
     }
 
     // ==================================================

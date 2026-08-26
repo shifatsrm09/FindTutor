@@ -8,6 +8,7 @@ const path = require("path");
 require("dotenv").config();
 
 const app = express();
+const LOCATIONS = ["Badda", "Gulshan", "Uttara", "Banani", "Mirpur", "Norda", "Rampura", "Tongi", "Merul"];
 
 app.use(cors());
 app.use(express.json());
@@ -37,18 +38,47 @@ function loadSQL(...folders) {
     return fs.readFileSync(filePath, "utf8");
 }
 
-const signupSQL = loadSQL("auth", "signup.sql");
-const signupStudentSQL = loadSQL("auth", "signup_student.sql");
-const signupTutorSQL = loadSQL("auth", "signup_tutor.sql");
-const loginSQL = loadSQL("auth", "login.sql");
-const meSQL = loadSQL("auth", "me.sql");
-const adminOverviewSQL = loadSQL("admin", "overview.sql");
-const adminUsersSQL = loadSQL("admin", "users.sql");
-const banUserSQL = loadSQL("admin", "ban_user.sql");
-const unbanUserSQL = loadSQL("admin", "unban_user.sql");
-const adminComplaintsSQL = loadSQL("admin", "complaints.sql");
-const resolveComplaintSQL = loadSQL("admin", "resolve_complaint.sql");
-const createComplaintSQL = loadSQL("complaints", "create.sql");
+const signupSQL = loadSQL("FT0_authentication", "signup.sql");
+const signupStudentSQL = loadSQL("FT0_authentication", "signup_student.sql");
+const signupTutorSQL = loadSQL("FT0_authentication", "signup_tutor.sql");
+const loginSQL = loadSQL("FT0_authentication", "login.sql");
+const meSQL = loadSQL("FT0_authentication", "me.sql");
+const adminOverviewSQL = loadSQL("FT1_admin", "overview.sql");
+const adminUsersSQL = loadSQL("FT1_admin", "users.sql");
+const banUserSQL = loadSQL("FT1_admin", "ban_user.sql");
+const unbanUserSQL = loadSQL("FT1_admin", "unban_user.sql");
+const adminComplaintsSQL = loadSQL("FT1_admin", "complaints.sql");
+const resolveComplaintSQL = loadSQL("FT1_admin", "resolve_complaint.sql");
+const createComplaintSQL = loadSQL("FT8_complaints", "create.sql");
+const subjectsSQL = loadSQL("FT9_common", "subjects.sql");
+const tutorSubjectRateSQL = loadSQL("FT2_booking", "tutor_subject_rate.sql");
+const availabilityCheckSQL = loadSQL("FT2_booking", "availability_check.sql");
+const bookingConflictSQL = loadSQL("FT2_booking", "booking_conflict.sql");
+const rescheduleConflictSQL = loadSQL("FT2_booking", "reschedule_conflict.sql");
+const createBookingSQL = loadSQL("FT2_booking", "create_booking.sql");
+const studentBookingsSQL = loadSQL("FT2_booking", "student_bookings.sql");
+const tutorBookingsSQL = loadSQL("FT2_booking", "tutor_bookings.sql");
+const cancelBookingSQL = loadSQL("FT2_booking", "cancel_booking.sql");
+const rescheduleBookingSQL = loadSQL("FT2_booking", "reschedule_booking.sql");
+const bookingDetailsSQL = loadSQL("FT2_booking", "booking_details.sql");
+const tutorUpdateBookingStatusSQL = loadSQL("FT2_booking", "tutor_update_booking_status.sql");
+const searchTutorsSQL = loadSQL("FT3_search", "search_tutors.sql");
+const tutorOverviewSQL = loadSQL("FT4_statistics", "tutor_overview.sql");
+const earningsBySubjectSQL = loadSQL("FT4_statistics", "earnings_by_subject.sql");
+const earningsByMonthSQL = loadSQL("FT4_statistics", "earnings_by_month.sql");
+const rankTutorsSQL = loadSQL("FT5_ranking", "rank_tutors.sql");
+const eligibleBookingSQL = loadSQL("FT6_reviews", "eligible_booking.sql");
+const createReviewSQL = loadSQL("FT6_reviews", "create_review.sql");
+const myReviewableBookingsSQL = loadSQL("FT6_reviews", "my_reviewable_bookings.sql");
+const tutorRatingSQL = loadSQL("FT6_reviews", "tutor_rating.sql");
+const createTutorRequestSQL = loadSQL("FT7_requests_matching", "create_tutor_request.sql");
+const createStudentRequestSQL = loadSQL("FT7_requests_matching", "create_student_request.sql");
+const studentTutorRequestsSQL = loadSQL("FT7_requests_matching", "student_tutor_requests.sql");
+const tutorStudentRequestsSQL = loadSQL("FT7_requests_matching", "tutor_student_requests.sql");
+const openTutorRequestsSQL = loadSQL("FT7_requests_matching", "open_tutor_requests.sql");
+const openStudentRequestsSQL = loadSQL("FT7_requests_matching", "open_student_requests.sql");
+const matchTutorsForRequestSQL = loadSQL("FT7_requests_matching", "match_tutors_for_request.sql");
+const matchStudentsForRequestSQL = loadSQL("FT7_requests_matching", "match_students_for_request.sql");
 
 // ==================================================
 // JWT CONFIGURATION
@@ -99,6 +129,7 @@ app.post("/api/auth/signup", async (req, res) => {
         email,
         password,
         phone,
+        location,
         role,
         institution,
         bio,
@@ -160,7 +191,8 @@ app.post("/api/auth/signup", async (req, res) => {
                 fullName,
                 email,
                 password,
-                phone || null
+                phone || null,
+                location || null
             ]
         );
 
@@ -247,6 +279,13 @@ app.post("/api/auth/login", async (req, res) => {
         return res.status(400).json({
             success: false,
             message: "Email and password are required."
+        });
+    }
+
+    if (location && !LOCATIONS.includes(location)) {
+        return res.status(400).json({
+            success: false,
+            message: "Please select a valid project location."
         });
     }
 
@@ -430,6 +469,34 @@ function requireAdmin(req, res, next) {
     }
 
     next();
+}
+
+function requireRole(role) {
+    return (req, res, next) => {
+        if (req.user.role !== role) {
+            return res.status(403).json({
+                success: false,
+                message: `${role} access is required.`
+            });
+        }
+
+        next();
+    };
+}
+
+function validTimeRange(startTime, endTime) {
+    return typeof startTime === "string" &&
+        typeof endTime === "string" &&
+        startTime < endTime;
+}
+
+function normalizeOptionalNumber(value) {
+    if (value === undefined || value === null || value === "") {
+        return null;
+    }
+
+    const number = Number(value);
+    return Number.isFinite(number) ? number : null;
 }
 
 // ==================================================
@@ -622,6 +689,337 @@ app.patch("/api/admin/complaints/:complaintID/resolve", authenticateToken, requi
     } catch (error) {
         console.error("Complaint resolution error:", error);
         res.status(500).json({ success: false, message: "Could not resolve complaint." });
+    }
+});
+
+// ==================================================
+// FT1: BOOK A TUTOR / CANCEL / RESCHEDULE
+// ==================================================
+
+app.get("/api/subjects", async (req, res) => {
+    try {
+        const [subjects] = await db.execute(subjectsSQL);
+        res.json({ success: true, subjects });
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Could not load subjects." });
+    }
+});
+
+app.get("/api/locations", (req, res) => {
+    res.json({ success: true, locations: LOCATIONS });
+});
+
+app.get("/api/tutors/search", async (req, res) => {
+    const subjectID = normalizeOptionalNumber(req.query.subjectID);
+    const location = req.query.location || null;
+    const teachingMode = req.query.teachingMode || null;
+    const minRate = normalizeOptionalNumber(req.query.minRate);
+    const maxRate = normalizeOptionalNumber(req.query.maxRate);
+    const minRating = normalizeOptionalNumber(req.query.minRating);
+
+    try {
+        const [tutors] = await db.execute(searchTutorsSQL, [
+            subjectID, subjectID, location, location, teachingMode, teachingMode,
+            minRate, minRate, maxRate, maxRate, minRating, minRating
+        ]);
+        res.json({ success: true, tutors });
+    } catch (error) {
+        console.error("Tutor search error:", error);
+        res.status(500).json({ success: false, message: "Could not search tutors." });
+    }
+});
+
+app.get("/api/tutors/rankings", async (req, res) => {
+    try {
+        const [tutors] = await db.execute(rankTutorsSQL);
+        res.json({ success: true, tutors });
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Could not load tutor rankings." });
+    }
+});
+
+app.post("/api/bookings", authenticateToken, requireRole("student"), async (req, res) => {
+    const { tutorID, subjectID, sessionDate, startTime, endTime, teachingMode } = req.body;
+    const numericTutorID = Number(tutorID);
+    const numericSubjectID = Number(subjectID);
+
+    if (!Number.isInteger(numericTutorID) || !Number.isInteger(numericSubjectID) ||
+        !sessionDate || !validTimeRange(startTime, endTime) ||
+        !["ONLINE", "OFFLINE", "BOTH"].includes(teachingMode)) {
+        return res.status(400).json({ success: false, message: "Valid tutor, subject, date, time range and teaching mode are required." });
+    }
+
+    const connection = await db.getConnection();
+    try {
+        await connection.beginTransaction();
+        const [subjectRows] = await connection.execute(tutorSubjectRateSQL, [numericTutorID, numericSubjectID]);
+
+        if (subjectRows.length === 0) {
+            await connection.rollback();
+            return res.status(400).json({ success: false, message: "This tutor does not teach the selected subject." });
+        }
+
+        const tutor = subjectRows[0];
+        if (tutor.teachingMode !== "BOTH" && teachingMode !== tutor.teachingMode) {
+            await connection.rollback();
+            return res.status(400).json({ success: false, message: "The selected teaching mode is not offered by this tutor." });
+        }
+
+        const [availabilityRows] = await connection.execute(availabilityCheckSQL, [numericTutorID, sessionDate, startTime, endTime]);
+        if (availabilityRows.length === 0) {
+            await connection.rollback();
+            return res.status(400).json({ success: false, message: "The tutor is not available during this date and time." });
+        }
+
+        const [conflicts] = await connection.execute(bookingConflictSQL, [numericTutorID, sessionDate, endTime, startTime]);
+        if (conflicts.length > 0) {
+            await connection.rollback();
+            return res.status(409).json({ success: false, message: "The tutor already has a conflicting booking." });
+        }
+
+        const [result] = await connection.execute(createBookingSQL, [
+            startTime, endTime, tutor.hourlyRate, sessionDate, teachingMode,
+            req.user.userID, numericTutorID, numericSubjectID
+        ]);
+        await connection.commit();
+        res.status(201).json({ success: true, message: "Booking request created.", bookingID: result.insertId, agreedRate: tutor.hourlyRate });
+    } catch (error) {
+        await connection.rollback();
+        console.error("Create booking error:", error);
+        res.status(500).json({ success: false, message: "Could not create booking." });
+    } finally {
+        connection.release();
+    }
+});
+
+app.get("/api/bookings/my", authenticateToken, async (req, res) => {
+    if (!["student", "tutor"].includes(req.user.role)) {
+        return res.status(403).json({ success: false, message: "Student or tutor access is required." });
+    }
+    try {
+        const sql = req.user.role === "student" ? studentBookingsSQL : tutorBookingsSQL;
+        const [bookings] = await db.execute(sql, [req.user.userID]);
+        res.json({ success: true, bookings });
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Could not load bookings." });
+    }
+});
+
+app.patch("/api/bookings/:bookingID/cancel", authenticateToken, requireRole("student"), async (req, res) => {
+    try {
+        const [result] = await db.execute(cancelBookingSQL, [Number(req.params.bookingID), req.user.userID]);
+        if (!result.affectedRows) return res.status(400).json({ success: false, message: "Only pending or confirmed bookings can be cancelled." });
+        res.json({ success: true, message: "Booking cancelled." });
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Could not cancel booking." });
+    }
+});
+
+app.patch("/api/bookings/:bookingID/reschedule", authenticateToken, requireRole("student"), async (req, res) => {
+    const { sessionDate, startTime, endTime, teachingMode } = req.body;
+    const bookingID = Number(req.params.bookingID);
+    if (!Number.isInteger(bookingID) || !sessionDate || !validTimeRange(startTime, endTime) || !["ONLINE", "OFFLINE", "BOTH"].includes(teachingMode)) {
+        return res.status(400).json({ success: false, message: "Valid date, time range and teaching mode are required." });
+    }
+    const connection = await db.getConnection();
+    try {
+        await connection.beginTransaction();
+        const [bookings] = await connection.execute(bookingDetailsSQL, [bookingID, req.user.userID]);
+        if (!bookings.length) {
+            await connection.rollback();
+            return res.status(404).json({ success: false, message: "Booking not found." });
+        }
+        const booking = bookings[0];
+        const [availability] = await connection.execute(availabilityCheckSQL, [booking.tutorID, sessionDate, startTime, endTime]);
+        const [conflicts] = await connection.execute(rescheduleConflictSQL, [booking.tutorID, sessionDate, bookingID, endTime, startTime]);
+        if (!availability.length || conflicts.length) {
+            await connection.rollback();
+            return res.status(409).json({ success: false, message: "Tutor is unavailable or has a conflicting booking at the new time." });
+        }
+        const [result] = await connection.execute(rescheduleBookingSQL, [startTime, endTime, sessionDate, teachingMode, bookingID, req.user.userID]);
+        if (!result.affectedRows) {
+            await connection.rollback();
+            return res.status(400).json({ success: false, message: "Only pending or confirmed bookings can be rescheduled." });
+        }
+        await connection.commit();
+        res.json({ success: true, message: "Booking rescheduled and returned to pending status." });
+    } catch (error) {
+        await connection.rollback();
+        res.status(500).json({ success: false, message: "Could not reschedule booking." });
+    } finally {
+        connection.release();
+    }
+});
+
+app.patch("/api/bookings/:bookingID/status", authenticateToken, requireRole("tutor"), async (req, res) => {
+    const { status } = req.body;
+    if (!["CONFIRMED", "COMPLETED", "CANCELLED"].includes(status)) {
+        return res.status(400).json({ success: false, message: "Status must be CONFIRMED, COMPLETED or CANCELLED." });
+    }
+    try {
+        const [result] = await db.execute(tutorUpdateBookingStatusSQL, [status, Number(req.params.bookingID), req.user.userID]);
+        if (!result.affectedRows) return res.status(400).json({ success: false, message: "This booking cannot be updated." });
+        res.json({ success: true, message: "Booking status updated." });
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Could not update booking status." });
+    }
+});
+
+// ==================================================
+// FT2: TUTOR EARNINGS, STATISTICS AND RANKING
+// ==================================================
+
+app.get("/api/tutor/statistics", authenticateToken, requireRole("tutor"), async (req, res) => {
+    try {
+        const [[overviewRows], [bySubject], [byMonth], [ratingRows]] = await Promise.all([
+            db.execute(tutorOverviewSQL, [req.user.userID]),
+            db.execute(earningsBySubjectSQL, [req.user.userID]),
+            db.execute(earningsByMonthSQL, [req.user.userID]),
+            db.execute(tutorRatingSQL, [req.user.userID])
+        ]);
+        res.json({ success: true, overview: overviewRows[0], bySubject, byMonth, rating: ratingRows[0] });
+    } catch (error) {
+        console.error("Tutor statistics error:", error);
+        res.status(500).json({ success: false, message: "Could not load tutor statistics." });
+    }
+});
+
+// ==================================================
+// FT3: REVIEWS, REQUEST POSTS AND ADMIN MATCHING
+// ==================================================
+
+app.get("/api/reviews/my-bookings", authenticateToken, requireRole("student"), async (req, res) => {
+    try {
+        const [bookings] = await db.execute(myReviewableBookingsSQL, [req.user.userID]);
+        res.json({ success: true, bookings });
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Could not load reviewable bookings." });
+    }
+});
+
+app.post("/api/reviews", authenticateToken, requireRole("student"), async (req, res) => {
+    const { bookingID, rating, comment } = req.body;
+    const numericRating = Number(rating);
+    if (!Number.isInteger(Number(bookingID)) || !Number.isFinite(numericRating) || numericRating < 1 || numericRating > 5) {
+        return res.status(400).json({ success: false, message: "A completed booking and rating from 1 to 5 are required." });
+    }
+    try {
+        const [eligibleBookings] = await db.execute(eligibleBookingSQL, [Number(bookingID), req.user.userID]);
+        if (!eligibleBookings.length) {
+            return res.status(400).json({ success: false, message: "You can review only one of your completed bookings." });
+        }
+        const [result] = await db.execute(createReviewSQL, [Number(bookingID), comment || null, numericRating]);
+        res.status(201).json({ success: true, message: "Review submitted.", reviewID: result.insertId });
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Could not submit review." });
+    }
+});
+
+function validateRequestBody(body) {
+    const { subjectID, budget, prefStartTime, prefEndTime, prefDate, teachingMode } = body;
+    if (!Number.isInteger(Number(subjectID)) || !prefDate || !validTimeRange(prefStartTime, prefEndTime) ||
+        !["ONLINE", "OFFLINE", "BOTH"].includes(teachingMode)) {
+        return null;
+    }
+    const parsedBudget = normalizeOptionalNumber(budget);
+    if (budget !== undefined && budget !== "" && parsedBudget === null) return null;
+    return { subjectID: Number(subjectID), budget: parsedBudget, prefStartTime, prefEndTime, prefDate, teachingMode };
+}
+
+app.post("/api/requests/tutor", authenticateToken, requireRole("student"), async (req, res) => {
+    const request = validateRequestBody(req.body);
+    if (!request) return res.status(400).json({ success: false, message: "Valid subject, date, time range and teaching mode are required." });
+    try {
+        const [result] = await db.execute(createTutorRequestSQL, [
+            request.budget, request.prefStartTime, request.prefEndTime, request.prefDate,
+            request.teachingMode, req.user.userID, request.subjectID
+        ]);
+        res.status(201).json({ success: true, message: "Tutor request posted.", requestID: result.insertId });
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Could not post tutor request." });
+    }
+});
+
+app.post("/api/requests/student", authenticateToken, requireRole("tutor"), async (req, res) => {
+    const request = validateRequestBody(req.body);
+    if (!request) return res.status(400).json({ success: false, message: "Valid subject, date, time range and teaching mode are required." });
+    try {
+        const [teaches] = await db.execute(tutorSubjectRateSQL, [req.user.userID, request.subjectID]);
+        if (!teaches.length) {
+            return res.status(400).json({ success: false, message: "You can post a student request only for a subject you teach." });
+        }
+        const [result] = await db.execute(createStudentRequestSQL, [
+            req.user.userID, request.budget, request.prefStartTime, request.prefEndTime,
+            request.prefDate, request.teachingMode, request.subjectID
+        ]);
+        res.status(201).json({ success: true, message: "Student request posted.", requestID: result.insertId });
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Could not post student request. Ensure you teach the selected subject." });
+    }
+});
+
+app.get("/api/admin/requests/tutors", authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const [requests] = await db.execute(openTutorRequestsSQL);
+        res.json({ success: true, requests });
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Could not load tutor requests." });
+    }
+});
+
+app.get("/api/admin/requests/students", authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const [requests] = await db.execute(openStudentRequestsSQL);
+        res.json({ success: true, requests });
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Could not load student requests." });
+    }
+});
+
+app.get("/api/requests/my", authenticateToken, async (req, res) => {
+    if (!["student", "tutor"].includes(req.user.role)) return res.status(403).json({ success: false, message: "Student or tutor access is required." });
+    try {
+        const sql = req.user.role === "student" ? studentTutorRequestsSQL : tutorStudentRequestsSQL;
+        const [requests] = await db.execute(sql, [req.user.userID]);
+        res.json({ success: true, requests });
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Could not load your requests." });
+    }
+});
+
+app.get("/api/requests/open/tutors", authenticateToken, requireRole("tutor"), async (req, res) => {
+    try {
+        const [requests] = await db.execute(openTutorRequestsSQL);
+        res.json({ success: true, requests });
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Could not load student tutor requests." });
+    }
+});
+
+app.get("/api/requests/open/students", authenticateToken, requireRole("student"), async (req, res) => {
+    try {
+        const [requests] = await db.execute(openStudentRequestsSQL);
+        res.json({ success: true, requests });
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Could not load tutor student requests." });
+    }
+});
+
+app.get("/api/admin/matches/tutors/:requestID", authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const [matches] = await db.execute(matchTutorsForRequestSQL, [Number(req.params.requestID)]);
+        res.json({ success: true, matches });
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Could not find matching tutors." });
+    }
+});
+
+app.get("/api/admin/matches/students/:requestID", authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const [matches] = await db.execute(matchStudentsForRequestSQL, [Number(req.params.requestID)]);
+        res.json({ success: true, matches });
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Could not find matching students." });
     }
 });
 

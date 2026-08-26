@@ -7,6 +7,7 @@ function Signup({ goToLogin }) {
         email: "",
         password: "",
         phone: "",
+        location: "",
         role: "student",
         institution: "",
         bio: "",
@@ -72,6 +73,7 @@ function Signup({ goToLogin }) {
                 email: "",
                 password: "",
                 phone: "",
+                location: "",
                 role: "student",
                 institution: "",
                 bio: "",
@@ -109,6 +111,24 @@ function Signup({ goToLogin }) {
                     onChange={handleChange}
                     required
                 />
+
+                <select
+                    name="location"
+                    value={form.location}
+                    onChange={handleChange}
+                    required
+                >
+                    <option value="">Select Location</option>
+                    <option value="Badda">Badda</option>
+                    <option value="Gulshan">Gulshan</option>
+                    <option value="Uttara">Uttara</option>
+                    <option value="Banani">Banani</option>
+                    <option value="Mirpur">Mirpur</option>
+                    <option value="Norda">Norda</option>
+                    <option value="Rampura">Rampura</option>
+                    <option value="Tongi">Tongi</option>
+                    <option value="Merul">Merul</option>
+                </select>
 
                 <input
                     type="email"

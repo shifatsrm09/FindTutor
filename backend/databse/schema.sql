@@ -11,6 +11,7 @@ CREATE TABLE USER (
     email VARCHAR(150) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
     phone VARCHAR(20),
+    location VARCHAR(100),
     isBanned BOOLEAN NOT NULL DEFAULT FALSE,
     createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -148,6 +149,30 @@ CREATE TABLE REVIEW (
 
     CONSTRAINT chk_review_rating
         CHECK (rating >= 1 AND rating <= 5)
+);
+
+CREATE TABLE STUDENT_REQUEST (
+    requestID INT AUTO_INCREMENT PRIMARY KEY,
+    tutorID INT NOT NULL,
+    budget DECIMAL(10,2),
+    prefStartTime TIME,
+    prefEndTime TIME,
+    prefDate DATE,
+    teachingMode VARCHAR(30),
+    status VARCHAR(30) DEFAULT 'OPEN',
+    subjectID INT NOT NULL,
+
+    CONSTRAINT fk_student_request_tutor
+        FOREIGN KEY (tutorID)
+        REFERENCES TUTOR(userID)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
+
+    CONSTRAINT fk_student_request_subject
+        FOREIGN KEY (subjectID)
+        REFERENCES SUBJECT(subjectID)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE
 );
 
 CREATE TABLE COMPLAINT (

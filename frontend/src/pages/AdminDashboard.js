@@ -7,6 +7,11 @@ function AdminDashboard({ onLogout }) {
     const [overview, setOverview] = useState(null);
     const [users, setUsers] = useState([]);
     const [complaints, setComplaints] = useState([]);
+    const [matchType, setMatchType] = useState("tutors");
+    const [requestID, setRequestID] = useState("");
+    const [matches, setMatches] = useState([]);
+    const [tutorRequests, setTutorRequests] = useState([]);
+    const [studentRequests, setStudentRequests] = useState([]);
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(true);
 
@@ -35,15 +40,19 @@ function AdminDashboard({ onLogout }) {
         setError("");
 
         try {
-            const [overviewData, usersData, complaintsData] = await Promise.all([
+            const [overviewData, usersData, complaintsData, tutorRequestsData, studentRequestsData] = await Promise.all([
                 request("/api/admin/overview"),
                 request("/api/admin/users"),
-                request("/api/admin/complaints")
+                request("/api/admin/complaints"),
+                request("/api/admin/requests/tutors"),
+                request("/api/admin/requests/students")
             ]);
 
             setOverview(overviewData.overview);
             setUsers(usersData.users);
             setComplaints(complaintsData.complaints);
+            setTutorRequests(tutorRequestsData.requests);
+            setStudentRequests(studentRequestsData.requests);
         } catch (requestError) {
             setError(requestError.message);
         } finally {
@@ -75,6 +84,17 @@ function AdminDashboard({ onLogout }) {
                 method: "PATCH"
             });
             loadAdminData();
+        } catch (requestError) {
+            setError(requestError.message);
+        }
+    };
+
+    const findMatches = async (event) => {
+        event.preventDefault();
+        setError("");
+        try {
+            const data = await request(`/api/admin/matches/${matchType}/${requestID}`);
+            setMatches(data.matches);
         } catch (requestError) {
             setError(requestError.message);
         }
@@ -143,6 +163,25 @@ function AdminDashboard({ onLogout }) {
                                 </div>
                             )}
                         </section>
+
+                        <section style={styles.section}>
+                            <h2>Find Request Matches</h2>
+                            <h3>Student requests for tutors</h3>
+                            <RequestTable rows={tutorRequests} />
+                            <h3>Tutor requests for students</h3>
+                            <RequestTable rows={studentRequests} />
+                            <p>Use a tutor-request ID to find tutors, or a student-request ID to find students.</p>
+                            <form onSubmit={findMatches} style={styles.matchForm}>
+                                <select value={matchType} onChange={(event) => setMatchType(event.target.value)}>
+                                    <option value="tutors">Find tutors for student request</option>
+                                    <option value="students">Find students for tutor request</option>
+                                </select>
+                                <input type="number" min="1" placeholder="Request ID" value={requestID} onChange={(event) => setRequestID(event.target.value)} required />
+                                <button>Find Matches</button>
+                            </form>
+                            {matches.length > 0 && <div style={styles.tableWrap}><table style={styles.table}><thead><tr>{Object.keys(matches[0]).map((key) => <th key={key}>{key}</th>)}</tr></thead><tbody>{matches.map((match, index) => <tr key={match.tutorID || match.studentID || index}>{Object.keys(matches[0]).map((key) => <td key={key}>{String(match[key] ?? "-")}</td>)}</tr>)}</tbody></table></div>}
+                            {requestID && matches.length === 0 && <p>No matches found yet.</p>}
+                        </section>
                     </>
                 )}
             </main>
@@ -152,6 +191,12 @@ function AdminDashboard({ onLogout }) {
 
 function StatCard({ label, value }) {
     return <div style={styles.statCard}><span>{label}</span><strong>{value}</strong></div>;
+}
+
+function RequestTable({ rows }) {
+    if (!rows.length) return <p>No open requests.</p>;
+    const keys = Object.keys(rows[0]);
+    return <div style={styles.tableWrap}><table style={styles.table}><thead><tr>{keys.map((key) => <th key={key}>{key}</th>)}</tr></thead><tbody>{rows.map((row) => <tr key={row.requestID}>{keys.map((key) => <td key={key}>{String(row[key] ?? "-")}</td>)}</tr>)}</tbody></table></div>;
 }
 
 const styles = {
@@ -166,6 +211,7 @@ const styles = {
     tableWrap: { overflowX: "auto" }, table: { width: "100%", borderCollapse: "collapse", textAlign: "left" },
     complaints: { display: "grid", gap: "12px" }, complaint: { display: "flex", justifyContent: "space-between", gap: "16px", alignItems: "center", padding: "16px", background: "#292929", borderRadius: "8px" },
     description: { margin: "8px 0" }
+    , matchForm: { display: "flex", flexWrap: "wrap", gap: "8px" }
 };
 
 export default AdminDashboard;
