@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { API_URL } from "../config";
 
 function Signup({ goToLogin }) {
 
@@ -43,7 +44,7 @@ function Signup({ goToLogin }) {
         try {
 
             const response = await fetch(
-                "http://localhost:5000/api/auth/signup",
+                `${API_URL}/api/auth/signup`,
                 {
                     method: "POST",
 

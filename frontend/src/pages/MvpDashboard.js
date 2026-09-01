@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import "./MvpDashboard.css";
+import { API_URL } from "../config";
 
-const API = "http://localhost:5000";
 const MODES = ["ONLINE", "OFFLINE", "BOTH"];
 const SORT_OPTIONS = [
     ["rating", "Rating"],
@@ -10,11 +10,23 @@ const SORT_OPTIONS = [
     ["experience", "Experience"],
     ["name", "Name"]
 ];
+const SUBJECT_SORT_OPTIONS = [
+    ["category", "Category and name"],
+    ["rating", "Highest rated"],
+    ["tutors", "Most tutor offerings"],
+    ["sessions", "Most completed sessions"],
+    ["demand", "Highest student demand"],
+    ["rate", "Lowest starting rate"]
+];
 
 function MvpDashboard({ user, onLogout }) {
     const isStudent = user.role === "student";
     const [tab, setTab] = useState("home");
     const [subjects, setSubjects] = useState([]);
+    const [subjectInsights, setSubjectInsights] = useState([]);
+    const [subjectCategories, setSubjectCategories] = useState([]);
+    const [subjectFilters, setSubjectFilters] = useState({ search: "", category: "", teachingMode: "", minRating: "", minTutors: "", maxRate: "" });
+    const [subjectSort, setSubjectSort] = useState("category");
     const [locations, setLocations] = useState([]);
     const [tutors, setTutors] = useState([]);
     const [bookings, setBookings] = useState([]);
@@ -32,7 +44,7 @@ function MvpDashboard({ user, onLogout }) {
     const [complaint, setComplaint] = useState({ reportedUserID: "", description: "" });
 
     const api = async (path, options = {}) => {
-        const response = await fetch(`${API}${path}`, { ...options, headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("findTutorToken")}`, ...options.headers } });
+        const response = await fetch(`${API_URL}${path}`, { ...options, headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("findTutorToken")}`, ...options.headers } });
         const data = await response.json();
         if (!response.ok) throw new Error(data.message || "Request failed.");
         return data;
@@ -62,12 +74,40 @@ function MvpDashboard({ user, onLogout }) {
         } catch (err) { fail(err); }
     };
 
+    const searchSubjects = async (event) => {
+        if (event) event.preventDefault();
+        try {
+            const params = new URLSearchParams(Object.entries({ ...subjectFilters, sortBy: subjectSort }).filter(([, value]) => value !== ""));
+            const data = await api(`/api/subjects?${params}`);
+            setSubjectInsights(data.subjects);
+        } catch (err) { fail(err); }
+    };
+
+    const resetSubjectSearch = () => {
+        setSubjectFilters({ search: "", category: "", teachingMode: "", minRating: "", minTutors: "", maxRate: "" });
+        setSubjectSort("category");
+        setSubjectInsights(subjects);
+    };
+
+    const openSubjectTutors = (subjectID) => {
+        setFilter({ ...filter, subjectID: String(subjectID) });
+        setTab("tutors");
+    };
+
     useEffect(() => {
-        Promise.all([api("/api/subjects"), api("/api/locations")]).then(([subjectData, locationData]) => { setSubjects(subjectData.subjects); setLocations(locationData.locations); }).catch(fail);
+        Promise.all([api("/api/subjects"), api("/api/locations")]).then(([subjectData, locationData]) => {
+            setSubjects(subjectData.subjects);
+            setSubjectInsights(subjectData.subjects);
+            setSubjectCategories(subjectData.categories);
+            setLocations(locationData.locations);
+        }).catch(fail);
         loadPersonal();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
-    useEffect(() => { if (tab === "tutors") searchTutors(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [tab, sortBy]);
+    // Tutor searches intentionally rerun only when the directory opens or its
+    // SQL-backed sort changes; form fields apply when the user submits them.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    useEffect(() => { if (tab === "tutors") searchTutors(); }, [tab, sortBy]);
 
     const submit = async (path, body, success) => { try { const data = await api(path, { method: "POST", body: JSON.stringify(body) }); show(data.message || success); loadPersonal(); } catch (err) { fail(err); } };
 
@@ -90,7 +130,7 @@ function MvpDashboard({ user, onLogout }) {
     };
     const updateStatus = async (id, status) => { try { await api(`/api/bookings/${id}/status`, { method: "PATCH", body: JSON.stringify({ status }) }); show("Booking status updated."); loadPersonal(); } catch (err) { fail(err); } };
 
-    const nav = isStudent ? [["home", "Home"], ["tutors", "All Tutors"], ["book", "Book Tutor"], ["bookings", "My Bookings"], ["requests", "Tutor Requests"], ["reviews", "Reviews"]] : [["home", "Home"], ["bookings", "My Bookings"], ["requests", "Student Requests"]];
+    const nav = isStudent ? [["home", "Home"], ["subjects", "Explore Subjects"], ["tutors", "All Tutors"], ["book", "Book Tutor"], ["bookings", "My Bookings"], ["requests", "Tutor Requests"], ["reviews", "Reviews"]] : [["home", "Home"], ["subjects", "Explore Subjects"], ["bookings", "My Bookings"], ["requests", "Student Requests"]];
 
     return (
         <div className="mvp-page">
@@ -105,6 +145,7 @@ function MvpDashboard({ user, onLogout }) {
                 {message && <div className="notice success">{message}</div>}
                 {error && <div className="notice error">{error}</div>}
                 {tab === "home" && <Home user={user} statistics={statistics} complaint={complaint} setComplaint={setComplaint} change={change} submit={submit} />}
+                {tab === "subjects" && <SubjectExplorer subjects={subjectInsights} categories={subjectCategories} filters={subjectFilters} setFilters={setSubjectFilters} change={change} search={searchSubjects} reset={resetSubjectSearch} sortBy={subjectSort} setSortBy={setSubjectSort} openTutors={openSubjectTutors} />}
                 {tab === "tutors" && <TutorDirectory filter={filter} setFilter={setFilter} subjects={subjects} locations={locations} change={change} search={searchTutors} tutors={tutors} sortBy={sortBy} setSortBy={setSortBy} selectTutor={selectTutor} />}
                 {tab === "book" && <BookingForm booking={booking} setBooking={setBooking} change={change} subjects={subjects} submit={submit} selectedTutor={selectedTutor} clearSelectedTutor={clearSelectedTutor} goToTutors={() => setTab("tutors")} />}
                 {tab === "bookings" && <BookingList bookings={bookings} isStudent={isStudent} cancel={cancel} reschedule={reschedule} updateStatus={updateStatus} />}
@@ -140,6 +181,106 @@ function Home({ user, statistics, complaint, setComplaint, change, submit }) {
                 </form>
             </section>
         </>
+    );
+}
+
+function SubjectExplorer({ subjects, categories, filters, setFilters, change, search, reset, sortBy, setSortBy, openTutors }) {
+    const totals = subjects.reduce((summary, subject) => ({
+        offerings: summary.offerings + Number(subject.tutorOfferingCount),
+        sessions: summary.sessions + Number(subject.completedSessions),
+        requests: summary.requests + Number(subject.openTutorRequests)
+    }), { offerings: 0, sessions: 0, requests: 0 });
+
+    return (
+        <>
+            <section className="panel subject-intro">
+                <div>
+                    <span className="eyebrow">FT9 · Subject discovery</span>
+                    <h2>Explore Subjects</h2>
+                    <p>Compare tutor supply, hourly rates, learner demand, completed sessions, and verified review ratings before choosing what to study or teach.</p>
+                </div>
+                <div className="stats subject-summary">
+                    <Stat label="Matching subjects" value={subjects.length} />
+                    <Stat label="Tutor offerings" value={totals.offerings} />
+                    <Stat label="Completed sessions" value={totals.sessions} />
+                    <Stat label="Open requests" value={totals.requests} />
+                </div>
+            </section>
+
+            <section className="panel">
+                <h2>Find the right subject</h2>
+                <form className="form-grid subject-filters" onSubmit={search}>
+                    <label className="field-label">Subject or category
+                        <input name="search" placeholder="e.g. Programming" value={filters.search} onChange={change(setFilters, filters)} />
+                    </label>
+                    <label className="field-label">Category
+                        <select name="category" value={filters.category} onChange={change(setFilters, filters)}>
+                            <option value="">All categories</option>
+                            {categories.map(category => <option key={category}>{category}</option>)}
+                        </select>
+                    </label>
+                    <label className="field-label">Teaching mode
+                        <select name="teachingMode" value={filters.teachingMode} onChange={change(setFilters, filters)}>
+                            <option value="">Any mode</option>
+                            <option value="ONLINE">Online available</option>
+                            <option value="OFFLINE">Offline available</option>
+                        </select>
+                    </label>
+                    <label className="field-label">Minimum rating
+                        <input name="minRating" type="number" min="0" max="5" step="0.1" placeholder="0–5" value={filters.minRating} onChange={change(setFilters, filters)} />
+                    </label>
+                    <label className="field-label">Minimum tutors
+                        <input name="minTutors" type="number" min="0" step="1" placeholder="Any" value={filters.minTutors} onChange={change(setFilters, filters)} />
+                    </label>
+                    <label className="field-label">Maximum starting rate
+                        <input name="maxRate" type="number" min="0" step="50" placeholder="৳ per hour" value={filters.maxRate} onChange={change(setFilters, filters)} />
+                    </label>
+                    <label className="field-label">Sort results
+                        <select value={sortBy} onChange={(event) => setSortBy(event.target.value)}>
+                            {SUBJECT_SORT_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                        </select>
+                    </label>
+                    <div className="filter-actions">
+                        <button>Apply filters</button>
+                        <button type="button" className="secondary-button" onClick={reset}>Reset</button>
+                    </div>
+                </form>
+            </section>
+
+            <div className="subject-grid">
+                {subjects.map(subject => <SubjectCard key={subject.subjectID} subject={subject} openTutors={openTutors} />)}
+                {!subjects.length && <div className="panel empty-state"><h2>No matching subjects</h2><p className="hint">Try lowering the rating or tutor requirements, increasing the maximum rate, or clearing the category.</p></div>}
+            </div>
+        </>
+    );
+}
+
+function SubjectCard({ subject, openTutors }) {
+    const hasRates = subject.minimumRate !== null;
+    const rating = Number(subject.reviewCount) > 0 ? `${Number(subject.averageRating).toFixed(1)} / 5` : "Not rated";
+    const rateRange = hasRates ? `৳${Number(subject.minimumRate).toFixed(0)}–৳${Number(subject.maximumRate).toFixed(0)} / hour` : "No tutor rates yet";
+
+    return (
+        <article className="subject-card">
+            <div className="subject-card-heading">
+                <div><span className="category-badge">{subject.category || "Uncategorized"}</span><h3>{subject.subjectName}</h3></div>
+                <div className="rating-block"><strong>{rating}</strong><span>{subject.reviewCount} reviews</span></div>
+            </div>
+            <div className="subject-metrics">
+                <Stat label="Tutor offerings" value={subject.tutorOfferingCount} />
+                <Stat label="With availability" value={subject.availableTutorCount} />
+                <Stat label="Completed sessions" value={subject.completedSessions} />
+                <Stat label="Open requests" value={subject.openTutorRequests} />
+            </div>
+            <div className="subject-details">
+                <p><b>Market rate:</b> {rateRange}</p>
+                <p><b>Average rate:</b> {hasRates ? `৳${Number(subject.averageRate).toFixed(0)} / hour` : "—"}</p>
+                <p><b>Teaching access:</b> {subject.onlineTutorCount} online · {subject.offlineTutorCount} offline</p>
+                <p><b>Demand per tutor:</b> {subject.demandPerTutor === null ? "No tutors available" : Number(subject.demandPerTutor).toFixed(2)}</p>
+                <p><b>Last booked:</b> {subject.lastBookedOn ? String(subject.lastBookedOn).slice(0, 10) : "No bookings yet"}</p>
+            </div>
+            <button disabled={!Number(subject.tutorOfferingCount)} onClick={() => openTutors(subject.subjectID)}>Browse tutors for this subject</button>
+        </article>
     );
 }
 
@@ -309,10 +450,21 @@ function ReviewPage({ review, setReview, change, reviewBookings, submit }) {
 }
 
 function SubjectSelect({ subjects, form, change, optional }) {
+    const groupedSubjects = subjects.reduce((groups, subject) => {
+        const category = subject.category || "Other";
+        groups[category] = groups[category] || [];
+        groups[category].push(subject);
+        return groups;
+    }, {});
+
     return (
         <select name="subjectID" value={form.subjectID} onChange={change} required={!optional}>
             <option value="">{optional ? "All subjects" : "Select subject"}</option>
-            {subjects.map(s => <option key={s.subjectID} value={s.subjectID}>{s.subjectName}</option>)}
+            {Object.entries(groupedSubjects).map(([category, categorySubjects]) => (
+                <optgroup key={category} label={category}>
+                    {categorySubjects.map(subject => <option key={subject.subjectID} value={subject.subjectID}>{subject.subjectName}</option>)}
+                </optgroup>
+            ))}
         </select>
     );
 }
