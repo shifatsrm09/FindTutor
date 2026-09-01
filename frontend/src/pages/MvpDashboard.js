@@ -130,7 +130,9 @@ function MvpDashboard({ user, onLogout }) {
     };
     const updateStatus = async (id, status) => { try { await api(`/api/bookings/${id}/status`, { method: "PATCH", body: JSON.stringify({ status }) }); show("Booking status updated."); loadPersonal(); } catch (err) { fail(err); } };
 
-    const nav = isStudent ? [["home", "Home"], ["subjects", "Explore Subjects"], ["tutors", "All Tutors"], ["book", "Book Tutor"], ["bookings", "My Bookings"], ["requests", "Tutor Requests"], ["reviews", "Reviews"]] : [["home", "Home"], ["subjects", "Explore Subjects"], ["bookings", "My Bookings"], ["requests", "Student Requests"]];
+    const nav = isStudent
+        ? [["home", "Home"], ["subjects", "Explore Subjects"], ["tutors", "All Tutors"], ["book", "Book Tutor"], ["bookings", "My Bookings"], ["requests", "Tutor Requests"], ["reviews", "Reviews"], ["complaints", "Complaints"]]
+        : [["home", "Home"], ["subjects", "Explore Subjects"], ["bookings", "My Bookings"], ["requests", "Student Requests"], ["complaints", "Complaints"]];
 
     return (
         <div className="mvp-page">
@@ -144,26 +146,102 @@ function MvpDashboard({ user, onLogout }) {
             <main className="mvp-main">
                 {message && <div className="notice success">{message}</div>}
                 {error && <div className="notice error">{error}</div>}
-                {tab === "home" && <Home user={user} statistics={statistics} complaint={complaint} setComplaint={setComplaint} change={change} submit={submit} />}
+                {tab === "home" && <Home user={user} isStudent={isStudent} statistics={statistics} subjects={subjects} bookings={bookings} requests={requests} setTab={setTab} openSubjectTutors={openSubjectTutors} />}
                 {tab === "subjects" && <SubjectExplorer subjects={subjectInsights} categories={subjectCategories} filters={subjectFilters} setFilters={setSubjectFilters} change={change} search={searchSubjects} reset={resetSubjectSearch} sortBy={subjectSort} setSortBy={setSubjectSort} openTutors={openSubjectTutors} />}
                 {tab === "tutors" && <TutorDirectory filter={filter} setFilter={setFilter} subjects={subjects} locations={locations} change={change} search={searchTutors} tutors={tutors} sortBy={sortBy} setSortBy={setSortBy} selectTutor={selectTutor} />}
                 {tab === "book" && <BookingForm booking={booking} setBooking={setBooking} change={change} subjects={subjects} submit={submit} selectedTutor={selectedTutor} clearSelectedTutor={clearSelectedTutor} goToTutors={() => setTab("tutors")} />}
                 {tab === "bookings" && <BookingList bookings={bookings} isStudent={isStudent} cancel={cancel} reschedule={reschedule} updateStatus={updateStatus} />}
                 {tab === "requests" && <RequestPage isStudent={isStudent} form={requestForm} setForm={setRequestForm} change={change} subjects={subjects} requests={requests} submit={submit} />}
                 {tab === "reviews" && <ReviewPage review={review} setReview={setReview} change={change} reviewBookings={reviewBookings} submit={submit} />}
+                {tab === "complaints" && <ComplaintsPage complaint={complaint} setComplaint={setComplaint} change={change} submit={submit} />}
             </main>
         </div>
     );
 }
 
-function Home({ user, statistics, complaint, setComplaint, change, submit }) {
+function Home({ user, isStudent, statistics, subjects, bookings, requests, setTab, openSubjectTutors }) {
+    const firstName = user.fullName.split(" ")[0];
+
+    if (isStudent) {
+        const upcoming = [...bookings]
+            .filter(b => ["PENDING", "CONFIRMED"].includes(b.status))
+            .sort((a, b) => new Date(a.sessionDate) - new Date(b.sessionDate))[0];
+        const popularSubjects = [...subjects]
+            .sort((a, b) => Number(b.tutorOfferingCount || 0) - Number(a.tutorOfferingCount || 0))
+            .slice(0, 3);
+        const upcomingCount = bookings.filter(b => ["PENDING", "CONFIRMED"].includes(b.status)).length;
+        const completedCount = bookings.filter(b => b.status === "COMPLETED").length;
+        const openRequestCount = requests.filter(r => r.status === "OPEN").length;
+
+        return (
+            <>
+                <section className="panel landing-hero">
+                    <span className="eyebrow">Find Tutor</span>
+                    <h2>Welcome back, {firstName}.</h2>
+                    <p>Discover subjects in demand, compare tutors by rating, availability and rate, and book your next session in a few clicks.</p>
+                    <div className="landing-actions">
+                        <button onClick={() => setTab("subjects")}>Explore Subjects</button>
+                        <button className="secondary-button" onClick={() => setTab("tutors")}>Browse All Tutors</button>
+                    </div>
+                    <div className="stats landing-stats">
+                        <Stat label="Upcoming sessions" value={upcomingCount} />
+                        <Stat label="Completed sessions" value={completedCount} />
+                        <Stat label="Open requests" value={openRequestCount} />
+                        <Stat label="Subjects available" value={subjects.length} />
+                    </div>
+                </section>
+
+                <section className="panel next-session-panel">
+                    <h2>Your next session</h2>
+                    {upcoming ? (
+                        <div className="next-session-card">
+                            <div>
+                                <strong>{upcoming.subjectName}</strong> with {upcoming.tutorName}
+                                <p className="hint">{String(upcoming.sessionDate).slice(0, 10)} · {String(upcoming.startTime).slice(0, 5)}–{String(upcoming.endTime).slice(0, 5)} · {upcoming.status}</p>
+                            </div>
+                            <button className="secondary-button" onClick={() => setTab("bookings")}>View My Bookings</button>
+                        </div>
+                    ) : (
+                        <p className="hint">You have no upcoming sessions yet. <button type="button" className="link-button" onClick={() => setTab("tutors")}>Find a tutor</button> to book one.</p>
+                    )}
+                </section>
+
+                <section className="panel">
+                    <div className="directory-toolbar">
+                        <h2 style={{ margin: 0 }}>Popular subjects</h2>
+                        <button type="button" className="link-button" onClick={() => setTab("subjects")}>See all subjects</button>
+                    </div>
+                    <div className="popular-grid">
+                        {popularSubjects.map(subject => (
+                            <div className="popular-card" key={subject.subjectID}>
+                                <span className="category-badge">{subject.category || "Uncategorized"}</span>
+                                <h3>{subject.subjectName}</h3>
+                                <p className="hint">{subject.tutorOfferingCount || 0} tutors · {Number(subject.reviewCount) > 0 ? `${Number(subject.averageRating).toFixed(1)} / 5` : "Not rated yet"}</p>
+                                <button className="secondary-button" onClick={() => openSubjectTutors(subject.subjectID)}>Browse tutors</button>
+                            </div>
+                        ))}
+                        {!popularSubjects.length && <p className="hint">No subjects available yet.</p>}
+                    </div>
+                </section>
+            </>
+        );
+    }
+
+    const pendingCount = bookings.filter(b => b.status === "PENDING").length;
+
     return (
         <>
-            <section className="panel">
-                <h2>Welcome, {user.fullName}</h2>
-                <p>Use the navigation above to manage your tutoring activity.</p>
-                {user.role === "tutor" && statistics && (
-                    <div className="stats">
+            <section className="panel landing-hero">
+                <span className="eyebrow">Find Tutor</span>
+                <h2>Welcome back, {firstName}.</h2>
+                <p>Track your sessions, respond to booking requests, and see which subjects students want most.</p>
+                <div className="landing-actions">
+                    <button onClick={() => setTab("bookings")}>View My Bookings</button>
+                    <button className="secondary-button" onClick={() => setTab("requests")}>Student Requests</button>
+                    <button className="secondary-button" onClick={() => setTab("subjects")}>Explore Subject Demand</button>
+                </div>
+                {statistics && (
+                    <div className="stats landing-stats">
                         <Stat label="Current students" value={statistics.overview.currentStudents} />
                         <Stat label="Completed students" value={statistics.overview.completedStudents} />
                         <Stat label="Total sessions" value={statistics.overview.totalSessions} />
@@ -172,15 +250,29 @@ function Home({ user, statistics, complaint, setComplaint, change, submit }) {
                     </div>
                 )}
             </section>
-            <section className="panel compact">
-                <h2>Submit a Complaint</h2>
-                <form className="form-grid" onSubmit={(e) => { e.preventDefault(); submit("/api/complaints", complaint, "Complaint submitted."); setComplaint({ reportedUserID: "", description: "" }); }}>
-                    <input name="reportedUserID" type="number" placeholder="Reported user ID" value={complaint.reportedUserID} onChange={change(setComplaint, complaint)} required />
-                    <textarea name="description" placeholder="Describe the issue" value={complaint.description} onChange={change(setComplaint, complaint)} required />
-                    <button>Submit Complaint</button>
-                </form>
+            <section className="panel next-session-panel">
+                <h2>Pending booking requests</h2>
+                {pendingCount ? (
+                    <p className="hint">You have {pendingCount} pending request{pendingCount > 1 ? "s" : ""} waiting for confirmation. <button type="button" className="link-button" onClick={() => setTab("bookings")}>Review them</button></p>
+                ) : (
+                    <p className="hint">No pending booking requests right now.</p>
+                )}
             </section>
         </>
+    );
+}
+
+function ComplaintsPage({ complaint, setComplaint, change, submit }) {
+    return (
+        <section className="panel compact">
+            <h2>Submit a Complaint</h2>
+            <p className="hint">Report an issue with a student or tutor. An administrator will review it and can resolve it from the admin dashboard.</p>
+            <form className="form-grid" onSubmit={(e) => { e.preventDefault(); submit("/api/complaints", complaint, "Complaint submitted."); setComplaint({ reportedUserID: "", description: "" }); }}>
+                <input name="reportedUserID" type="number" placeholder="Reported user ID" value={complaint.reportedUserID} onChange={change(setComplaint, complaint)} required />
+                <textarea name="description" placeholder="Describe the issue" value={complaint.description} onChange={change(setComplaint, complaint)} required />
+                <button>Submit Complaint</button>
+            </form>
+        </section>
     );
 }
 
