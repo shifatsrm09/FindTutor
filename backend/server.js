@@ -21,6 +21,15 @@ const TUTOR_SORT_OPTIONS = {
     reviews: "reviewCount DESC, averageRating DESC"
 };
 
+const SUBJECT_SORT_OPTIONS = {
+    category: "s.category ASC, s.subjectName ASC",
+    rating: "averageRating DESC, reviewCount DESC, s.subjectName ASC",
+    tutors: "tutorOfferingCount DESC, averageRating DESC, s.subjectName ASC",
+    sessions: "completedSessions DESC, averageRating DESC, s.subjectName ASC",
+    demand: "openTutorRequests DESC, demandPerTutor DESC, s.subjectName ASC",
+    rate: "CASE WHEN minimumRate IS NULL THEN 1 ELSE 0 END, minimumRate ASC, s.subjectName ASC"
+};
+
 app.use(cors());
 app.use(express.json());
 
@@ -62,6 +71,7 @@ const adminComplaintsSQL = loadSQL("FT1_admin", "complaints.sql");
 const resolveComplaintSQL = loadSQL("FT1_admin", "resolve_complaint.sql");
 const createComplaintSQL = loadSQL("FT8_complaints", "create.sql");
 const subjectsSQL = loadSQL("FT9_common", "subjects.sql");
+const subjectCategoriesSQL = loadSQL("FT9_common", "subject_categories.sql");
 const tutorSubjectRateSQL = loadSQL("FT2_booking", "tutor_subject_rate.sql");
 const availabilityCheckSQL = loadSQL("FT2_booking", "availability_check.sql");
 const bookingConflictSQL = loadSQL("FT2_booking", "booking_conflict.sql");
@@ -708,10 +718,66 @@ app.patch("/api/admin/complaints/:complaintID/resolve", authenticateToken, requi
 // ==================================================
 
 app.get("/api/subjects", async (req, res) => {
+    const search = String(req.query.search || "").trim() || null;
+    const category = String(req.query.category || "").trim() || null;
+    const teachingMode = String(req.query.teachingMode || "").toUpperCase() || null;
+    const minRating = normalizeOptionalNumber(req.query.minRating);
+    const minTutors = normalizeOptionalNumber(req.query.minTutors);
+    const maxRate = normalizeOptionalNumber(req.query.maxRate);
+    const sortBy = SUBJECT_SORT_OPTIONS[req.query.sortBy] ? req.query.sortBy : "category";
+
+    const invalidNumber = (rawValue, parsedValue) =>
+        rawValue !== undefined && rawValue !== "" && parsedValue === null;
+
+    if (search && search.length > 100) {
+        return res.status(400).json({ success: false, message: "Subject search must be 100 characters or fewer." });
+    }
+
+    if (category && category.length > 100) {
+        return res.status(400).json({ success: false, message: "Category must be 100 characters or fewer." });
+    }
+
+    if (teachingMode && !["ONLINE", "OFFLINE"].includes(teachingMode)) {
+        return res.status(400).json({ success: false, message: "Teaching mode must be ONLINE or OFFLINE." });
+    }
+
+    if (invalidNumber(req.query.minRating, minRating) || minRating < 0 || minRating > 5) {
+        return res.status(400).json({ success: false, message: "Minimum rating must be between 0 and 5." });
+    }
+
+    if (invalidNumber(req.query.minTutors, minTutors) ||
+        (minTutors !== null && (minTutors < 0 || !Number.isInteger(minTutors)))) {
+        return res.status(400).json({ success: false, message: "Minimum tutors must be a non-negative whole number." });
+    }
+
+    if (invalidNumber(req.query.maxRate, maxRate) || maxRate < 0) {
+        return res.status(400).json({ success: false, message: "Maximum rate must be a non-negative number." });
+    }
+
     try {
-        const [subjects] = await db.execute(subjectsSQL);
-        res.json({ success: true, subjects });
+        const [[subjects], [categoryRows]] = await Promise.all([
+            db.execute(
+                `${subjectsSQL} ORDER BY ${SUBJECT_SORT_OPTIONS[sortBy]};`,
+                [
+                    category, category,
+                    search, search, search,
+                    teachingMode, teachingMode, teachingMode,
+                    minRating, minRating,
+                    minTutors, minTutors,
+                    maxRate, maxRate
+                ]
+            ),
+            db.execute(subjectCategoriesSQL)
+        ]);
+
+        res.json({
+            success: true,
+            subjects,
+            categories: categoryRows.map((row) => row.category),
+            sortBy
+        });
     } catch (error) {
+        console.error("Subject discovery error:", error);
         res.status(500).json({ success: false, message: "Could not load subjects." });
     }
 });

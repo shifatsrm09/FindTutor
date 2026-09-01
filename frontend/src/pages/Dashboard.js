@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { API_URL } from "../config";
 
 function Dashboard({ user, onLogout }) {
     const [reportedUserID, setReportedUserID] = useState("");
@@ -15,7 +16,7 @@ function Dashboard({ user, onLogout }) {
 
         try {
             const token = localStorage.getItem("findTutorToken");
-            const response = await fetch("http://localhost:5000/api/complaints", {
+            const response = await fetch(`${API_URL}/api/complaints`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

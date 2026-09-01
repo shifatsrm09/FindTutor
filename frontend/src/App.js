@@ -4,6 +4,7 @@ import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import AdminDashboard from "./pages/AdminDashboard";
 import MvpDashboard from "./pages/MvpDashboard";
+import { API_URL } from "./config";
 
 function App() {
 
@@ -28,7 +29,7 @@ function App() {
 
         // Ask backend to verify the token
         fetch(
-            "http://localhost:5000/api/auth/me",
+            `${API_URL}/api/auth/me`,
             {
                 method: "GET",
 

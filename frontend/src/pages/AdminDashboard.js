@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-
-const API_URL = "http://localhost:5000";
+import { API_URL } from "../config";
 
 function AdminDashboard({ onLogout }) {
     const [overview, setOverview] = useState(null);
