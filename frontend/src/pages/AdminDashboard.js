@@ -1048,6 +1048,8 @@ function MatchSection({
 
     return (
         <div>
+            <h1 style={styles.futureNotice}>etar kaaz future e kora hobe</h1>
+
             <section style={styles.matchHero}>
                 <div style={styles.matchHeroIcon}>🔎</div>
 
@@ -2351,6 +2353,18 @@ const styles = {
         fontSize: "10px",
         fontWeight: 800,
         cursor: "pointer"
+    },
+
+    futureNotice: {
+        margin: "0 0 20px",
+        fontSize: "32px",
+        fontWeight: 900,
+        textAlign: "center",
+        color: "#be123c",
+        background: "#fff1f2",
+        border: "2px dashed #fecdd3",
+        borderRadius: "14px",
+        padding: "22px"
     },
 
     matchHero: {
