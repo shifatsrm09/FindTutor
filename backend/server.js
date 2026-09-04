@@ -92,6 +92,7 @@ const eligibleBookingSQL = loadSQL("FT6_reviews", "eligible_booking.sql");
 const createReviewSQL = loadSQL("FT6_reviews", "create_review.sql");
 const myReviewableBookingsSQL = loadSQL("FT6_reviews", "my_reviewable_bookings.sql");
 const tutorRatingSQL = loadSQL("FT6_reviews", "tutor_rating.sql");
+const tutorReviewsSQL = loadSQL("FT6_reviews", "tutor_reviews.sql");
 const createTutorRequestSQL = loadSQL("FT7_requests_matching", "create_tutor_request.sql");
 const createStudentRequestSQL = loadSQL("FT7_requests_matching", "create_student_request.sql");
 const studentTutorRequestsSQL = loadSQL("FT7_requests_matching", "student_tutor_requests.sql");
@@ -816,6 +817,22 @@ app.get("/api/tutors/rankings", async (req, res) => {
         res.json({ success: true, tutors });
     } catch (error) {
         res.status(500).json({ success: false, message: "Could not load tutor rankings." });
+    }
+});
+
+app.get("/api/tutors/:tutorID/reviews", async (req, res) => {
+    const tutorID = Number(req.params.tutorID);
+
+    if (!Number.isInteger(tutorID)) {
+        return res.status(400).json({ success: false, message: "A valid tutor ID is required." });
+    }
+
+    try {
+        const [reviews] = await db.execute(tutorReviewsSQL, [tutorID]);
+        res.json({ success: true, reviews });
+    } catch (error) {
+        console.error("Tutor reviews error:", error);
+        res.status(500).json({ success: false, message: "Could not load reviews for this tutor." });
     }
 });
 

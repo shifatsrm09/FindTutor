@@ -38,6 +38,7 @@ function MvpDashboard({ user, onLogout }) {
     const [sortBy, setSortBy] = useState("rating");
     const [filter, setFilter] = useState({ subjectID: "", location: "", teachingMode: "", minRate: "", maxRate: "", minRating: "" });
     const [selectedTutor, setSelectedTutor] = useState(null);
+    const [reviewsModal, setReviewsModal] = useState(null); // { tutor, reviews, loading, error }
     const [booking, setBooking] = useState({ tutorID: "", subjectID: "", sessionDate: "", startTime: "", endTime: "", teachingMode: "ONLINE" });
     const [requestForm, setRequestForm] = useState({ subjectID: "", budget: "", prefDate: "", prefStartTime: "", prefEndTime: "", teachingMode: "ONLINE" });
     const [review, setReview] = useState({ bookingID: "", rating: "5", comment: "" });
@@ -120,6 +121,19 @@ function MvpDashboard({ user, onLogout }) {
     };
     const clearSelectedTutor = () => { setSelectedTutor(null); setBooking({ ...booking, tutorID: "" }); };
 
+    // Opens the reviews modal for a tutor and fetches every review left for
+    // them (reviewer name, rating and comment) from the FT6 reviews endpoint.
+    const openTutorReviews = async (tutor) => {
+        setReviewsModal({ tutor, reviews: [], loading: true, error: "" });
+        try {
+            const data = await api(`/api/tutors/${tutor.tutorID}/reviews`);
+            setReviewsModal({ tutor, reviews: data.reviews, loading: false, error: "" });
+        } catch (err) {
+            setReviewsModal({ tutor, reviews: [], loading: false, error: err.message });
+        }
+    };
+    const closeTutorReviews = () => setReviewsModal(null);
+
     const cancel = async (id) => { try { await api(`/api/bookings/${id}/cancel`, { method: "PATCH" }); show("Booking cancelled."); loadPersonal(); } catch (err) { fail(err); } };
     const reschedule = async (id) => {
         const sessionDate = window.prompt("New date (YYYY-MM-DD):");
@@ -148,13 +162,14 @@ function MvpDashboard({ user, onLogout }) {
                 {error && <div className="notice error">{error}</div>}
                 {tab === "home" && <Home user={user} isStudent={isStudent} statistics={statistics} subjects={subjects} bookings={bookings} requests={requests} setTab={setTab} openSubjectTutors={openSubjectTutors} />}
                 {tab === "subjects" && <SubjectExplorer subjects={subjectInsights} categories={subjectCategories} filters={subjectFilters} setFilters={setSubjectFilters} change={change} search={searchSubjects} reset={resetSubjectSearch} sortBy={subjectSort} setSortBy={setSubjectSort} openTutors={openSubjectTutors} />}
-                {tab === "tutors" && <TutorDirectory filter={filter} setFilter={setFilter} subjects={subjects} locations={locations} change={change} search={searchTutors} tutors={tutors} sortBy={sortBy} setSortBy={setSortBy} selectTutor={selectTutor} />}
+                {tab === "tutors" && <TutorDirectory filter={filter} setFilter={setFilter} subjects={subjects} locations={locations} change={change} search={searchTutors} tutors={tutors} sortBy={sortBy} setSortBy={setSortBy} selectTutor={selectTutor} viewReviews={openTutorReviews} />}
                 {tab === "book" && <BookingForm booking={booking} setBooking={setBooking} change={change} subjects={subjects} submit={submit} selectedTutor={selectedTutor} clearSelectedTutor={clearSelectedTutor} goToTutors={() => setTab("tutors")} />}
                 {tab === "bookings" && <BookingList bookings={bookings} isStudent={isStudent} cancel={cancel} reschedule={reschedule} updateStatus={updateStatus} />}
                 {tab === "requests" && <RequestPage isStudent={isStudent} form={requestForm} setForm={setRequestForm} change={change} subjects={subjects} requests={requests} submit={submit} />}
                 {tab === "reviews" && <ReviewPage review={review} setReview={setReview} change={change} reviewBookings={reviewBookings} submit={submit} />}
                 {tab === "complaints" && <ComplaintsPage complaint={complaint} setComplaint={setComplaint} change={change} submit={submit} />}
             </main>
+            {reviewsModal && <ReviewsModal modal={reviewsModal} close={closeTutorReviews} />}
         </div>
     );
 }
@@ -376,7 +391,7 @@ function SubjectCard({ subject, openTutors }) {
     );
 }
 
-function TutorDirectory({ filter, setFilter, subjects, locations, change, search, tutors, sortBy, setSortBy, selectTutor }) {
+function TutorDirectory({ filter, setFilter, subjects, locations, change, search, tutors, sortBy, setSortBy, selectTutor, viewReviews }) {
     return (
         <>
             <section className="panel">
@@ -414,7 +429,10 @@ function TutorDirectory({ filter, setFilter, subjects, locations, change, search
                         <p><b>Subjects:</b> {t.subjects}</p>
                         <p className="availability-line"><b>Availability:</b> {t.availability || "No availability listed"}</p>
                         <p><b>Rate:</b> ৳{t.minimumRate}/hour · <b>Rating:</b> {t.averageRating} ({t.reviewCount} reviews) · <b>Experience:</b> {t.exp_year} yrs</p>
-                        <button onClick={() => selectTutor(t)}>Book this tutor</button>
+                        <div className="tutor-card-actions">
+                            <button onClick={() => selectTutor(t)}>Book this tutor</button>
+                            <button type="button" className="secondary-button" onClick={() => viewReviews(t)}>See Reviews ({t.reviewCount})</button>
+                        </div>
                     </article>
                 ))}
                 {!tutors.length && <p className="hint">No tutors match the current filters.</p>}
@@ -558,6 +576,42 @@ function SubjectSelect({ subjects, form, change, optional }) {
                 </optgroup>
             ))}
         </select>
+    );
+}
+function ReviewsModal({ modal, close }) {
+    const { tutor, reviews, loading, error } = modal;
+
+    return (
+        <div className="modal-overlay" onClick={close}>
+            <div className="modal-box" onClick={(event) => event.stopPropagation()}>
+                <div className="modal-header">
+                    <h2>Reviews for {tutor.fullName}</h2>
+                    <button type="button" className="secondary-button" onClick={close}>Close</button>
+                </div>
+                <p className="hint">
+                    Average rating {tutor.averageRating} / 5 · {tutor.reviewCount} review{Number(tutor.reviewCount) === 1 ? "" : "s"}
+                </p>
+
+                {loading && <p className="hint">Loading reviews...</p>}
+                {error && <div className="notice error">{error}</div>}
+
+                {!loading && !error && (
+                    <div className="review-list">
+                        {reviews.map((r) => (
+                            <div className="review-item" key={r.reviewID}>
+                                <div className="review-item-header">
+                                    <strong>{r.studentName}</strong>
+                                    <span className="review-rating">{"\u2605".repeat(r.rating)}{"\u2606".repeat(5 - r.rating)}</span>
+                                </div>
+                                <p className="hint">{r.subjectName} · {String(r.createdAt).slice(0, 10)}</p>
+                                {r.comment && <p className="review-comment">{r.comment}</p>}
+                            </div>
+                        ))}
+                        {!reviews.length && <p className="hint">This tutor has no reviews yet.</p>}
+                    </div>
+                )}
+            </div>
+        </div>
     );
 }
 function ModeSelect({ form, change }) { return <select name="teachingMode" value={form.teachingMode} onChange={change}>{MODES.map(m => <option key={m}>{m}</option>)}</select>; }
