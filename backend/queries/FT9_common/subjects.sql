@@ -2,22 +2,22 @@ SELECT
     s.subjectID,
     s.subjectName,
     s.category,
-    COALESCE(ts.tutorOfferingCount, 0) AS tutorOfferingCount,
-    COALESCE(ts.availableTutorCount, 0) AS availableTutorCount,
-    COALESCE(ts.onlineTutorCount, 0) AS onlineTutorCount,
-    COALESCE(ts.offlineTutorCount, 0) AS offlineTutorCount,
+    IFNULL(ts.tutorOfferingCount, 0) AS tutorOfferingCount,
+    IFNULL(ts.availableTutorCount, 0) AS availableTutorCount,
+    IFNULL(ts.onlineTutorCount, 0) AS onlineTutorCount,
+    IFNULL(ts.offlineTutorCount, 0) AS offlineTutorCount,
     ts.minimumRate,
     ts.averageRate,
     ts.maximumRate,
-    COALESCE(bs.totalBookings, 0) AS totalBookings,
-    COALESCE(bs.completedSessions, 0) AS completedSessions,
-    COALESCE(bs.reviewCount, 0) AS reviewCount,
-    COALESCE(bs.averageRating, 0) AS averageRating,
+    IFNULL(bs.totalBookings, 0) AS totalBookings,
+    IFNULL(bs.completedSessions, 0) AS completedSessions,
+    IFNULL(bs.reviewCount, 0) AS reviewCount,
+    IFNULL(bs.averageRating, 0) AS averageRating,
     bs.lastBookedOn,
-    COALESCE(ds.openTutorRequests, 0) AS openTutorRequests,
+    IFNULL(ds.openTutorRequests, 0) AS openTutorRequests,
     ROUND(
-        COALESCE(ds.openTutorRequests, 0) /
-        NULLIF(COALESCE(ts.tutorOfferingCount, 0), 0),
+        IFNULL(ds.openTutorRequests, 0) /
+        NULLIF(IFNULL(ts.tutorOfferingCount, 0), 0),
         2
     ) AS demandPerTutor
 FROM SUBJECT s
